@@ -95,16 +95,34 @@ email behind it, so no SMS provider is needed.
 
 Firebase console → **Firestore Database** → Create database.
 
-### 3. Deploy the security rules
+### 3. Deploy the security rules and indexes
 
-Paste the included rule files into the Firebase console:
+The rule and index files are included:
 
-- `firestore.rules` → **Firestore** → Rules
-- `storage.rules` → **Storage** → Rules
+- `firestore.rules` → Firestore security rules
+- `firestore.indexes.json` → composite indexes
+- `storage.rules` → Storage security rules
+
+With the Firebase CLI logged in (`firebase login` and `firebase use
+<project-id>`), deploy them all with:
 
 ```bash
-firebase deploy --only firestore:rules,storage
+npm install -g firebase-tools
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
+
+Or paste `firestore.rules` and `storage.rules` into the console under
+**Rules**, and create the two composite indexes by hand under **Firestore →
+Indexes → Add index**:
+
+| Collection | Fields |
+| --- | --- |
+| `bookings` | `userId` Ascending, `createdAt` Descending |
+| `notifications` | `uid` Ascending, `createdAt` Descending |
+
+Those two back **My Reservations** and **Notifications**; without them those
+pages will show a "missing index" error. Everything else uses equality-only
+filters, which Firestore's automatic single-field indexes already cover.
 
 ### 4. Enable Storage
 
@@ -153,8 +171,10 @@ notifications/{id}
   uid, title, body, kind, bookingId, read, createdAt
 ```
 
-The composite queries used by the calendar are equality-only, so Firestore's
-automatic single-field indexes are sufficient — no manual indexes required.
+Two queries need composite indexes (`bookings` by userId + createdAt, and
+`notifications` by uid + createdAt) — they ship in
+`firestore.indexes.json`. The rest use equality-only filters, which Firestore's
+automatic single-field indexes already cover.
 
 ---
 
