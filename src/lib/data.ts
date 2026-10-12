@@ -260,10 +260,14 @@ export async function setBookingStatus(
 }
 
 export async function cancelBooking(bookingId: string, byAdmin = false): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
-    status: "cancelled" satisfies BookingStatus,
-    reviewedAt: byAdmin ? serverTimestamp() : null,
-  });
+  // A student's cancellation may only touch `status` — the security rules
+  // reject any other changed field, so `reviewedAt` is written by admins only.
+  await updateDoc(
+    doc(db, COLLECTIONS.bookings, bookingId),
+    byAdmin
+      ? { status: "cancelled" satisfies BookingStatus, reviewedAt: serverTimestamp() }
+      : { status: "cancelled" satisfies BookingStatus },
+  );
 }
 
 /** Frees the slot only when nothing else still holds it. */
