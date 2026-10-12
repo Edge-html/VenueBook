@@ -71,8 +71,9 @@ export function AdminConsole() {
     fallback: [],
   });
 
-  const bookings = bookingRows ?? [];
-  const blocks = blockRows ?? [];
+  // Memoed so downstream hooks see a stable reference between renders.
+  const bookings = useMemo(() => bookingRows ?? [], [bookingRows]);
+  const blocks = useMemo(() => blockRows ?? [], [blockRows]);
 
   // The toast is purely informational and self-clears.
   useEffect(() => {
@@ -84,8 +85,10 @@ export function AdminConsole() {
   const adminName = profile?.fullName ?? "Admin";
 
   const filtered = useMemo(() => {
-    const rows = bookings ?? [];
-    return statusFilter === "all" ? rows : rows.filter((b) => b.status === statusFilter);
+    return statusFilter === "all"
+      ? bookings
+      : bookings.filter((b) => b.status === statusFilter);
+    // `bookings` is a fresh array only when the query re-settles.
   }, [bookings, statusFilter]);
 
   const pendingCount = (bookings ?? []).filter((b) => b.status === "pending").length;

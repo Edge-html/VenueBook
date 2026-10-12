@@ -30,7 +30,7 @@ export function TodaysAvailability() {
     [date],
   );
 
-  const { data, loading } = useAsyncData<Record<string, Record<string, SlotState>>>({
+  const { data, error, loading } = useAsyncData<Record<string, Record<string, SlotState>>>({
     cacheKey: `today:${date}`,
     load,
     fallback: {},
@@ -57,6 +57,17 @@ export function TodaysAvailability() {
         {FACILITIES.map((facility) => {
           const Icon = FACILITY_ICONS[facility.id];
           const daySlots = data?.[facility.id];
+
+          if (error) {
+            return (
+              <div key={facility.id} className="flex items-center gap-2 rounded-lg bg-cream-100 px-3 py-2.5">
+                <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
+                <p className="text-xs text-neutral-600">
+                  Schedule unavailable right now. Check the availability page for details.
+                </p>
+              </div>
+            );
+          }
 
           return (
             <div key={facility.id}>
