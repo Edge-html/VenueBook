@@ -17,6 +17,7 @@ import {
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 import type { FacilityId, SlotState } from "@/lib/types";
+import { describeLoadError } from "@/lib/load-errors";
 import { useAsyncData } from "@/lib/use-async-data";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
@@ -266,35 +267,49 @@ export function AvailabilityCalendar() {
           </div>
 
           {error && (
-            <p className="mb-3 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2 text-sm text-booked">
-              {error}
+            <p className="mb-3 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
+              {describeLoadError(new Error(error), "Could not load the schedule.")}
             </p>
           )}
 
-          <div className="space-y-2">
-            {TIME_SLOTS.map((slot) =>
-              loading || !selectedSlots ? (
-                <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-cream-200" />
-              ) : (
-                <div key={slot.id} className="flex items-center gap-3">
-                  <SlotChip
-                    label={slot.label}
-                    state={selectedSlots[slot.id] ?? "available"}
-                    className="w-28 shrink-0"
-                  />
-                  <p className="text-xs text-neutral-600">
-                    {selectedSlots[slot.id] === "available"
-                      ? "Open — book it now"
-                      : selectedSlots[slot.id] === "booked"
-                        ? "Already reserved"
-                        : selectedSlots[slot.id] === "pending"
-                          ? "Awaiting approval"
-                          : "Closed by the admin"}
-                  </p>
+          {error ? (
+            <div className="space-y-2">
+              {TIME_SLOTS.map((slot) => (
+                <div
+                  key={slot.id}
+                  className="flex h-10 items-center gap-3 rounded-lg bg-cream-200 px-3 text-xs font-medium text-neutral-400"
+                >
+                  <span className="w-28 shrink-0">{slot.label}</span>
+                  <span>Unavailable</span>
                 </div>
-              ),
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {TIME_SLOTS.map((slot) =>
+                loading || !selectedSlots ? (
+                  <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-cream-200" />
+                ) : (
+                  <div key={slot.id} className="flex items-center gap-3">
+                    <SlotChip
+                      label={slot.label}
+                      state={selectedSlots[slot.id] ?? "available"}
+                      className="w-28 shrink-0"
+                    />
+                    <p className="text-xs text-neutral-600">
+                      {selectedSlots[slot.id] === "available"
+                        ? "Open — book it now"
+                        : selectedSlots[slot.id] === "booked"
+                          ? "Already reserved"
+                          : selectedSlots[slot.id] === "pending"
+                            ? "Awaiting approval"
+                            : "Closed by the admin"}
+                    </p>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
 
           <Link
             href={`/book?facility=${facilityId}&date=${selected}`}

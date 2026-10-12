@@ -66,31 +66,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialising, setInitialising] = useState(true);
 
   const loadProfile = useCallback(async (nextUser: User) => {
-    const snap = await getDoc(doc(db, "users", nextUser.uid));
-
-    if (snap.exists()) {
-      const data = snap.data() as Omit<UserProfile, "uid">;
-      setProfile({ uid: nextUser.uid, ...data });
-      return;
-    }
-
-    // An account created from the Firebase console (or one that predates this
-    // schema) gets a profile document written on first sign-in.
     const email = nextUser.email ?? "";
-    const role: Role = BOOTSTRAP_ADMIN_EMAILS.includes(email.toLowerCase())
+    const bootstrapRole: Role = BOOTSTRAP_ADMIN_EMAILS.includes(email.toLowerCase())
       ? "admin"
       : "student";
 
-    const seed: UserProfile = {
-      uid: nextUser.uid,
-      fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
-      email,
-      phone: "",
-      role,
-      createdAt: serverTimestamp() as never,
-    };
-    await setDoc(doc(db, "users", nextUser.uid), seed);
-    setProfile(seed);
+    try {
+      const snap = await getDoc(doc(db, "users", nextUser.uid));
+
+      if (snap.exists()) {
+        const data = snap.data() as Omit<UserProfile, "uid">;
+        setProfile({ uid: nextUser.uid, ...data });
+        return;
+      }
+
+      // First sign-in on an account with no profile document yet.
+      const seed: UserProfile = {
+        uid: nextUser.uid,
+        fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
+        email,
+        phone: "",
+        role: bootstrapRole,
+        createdAt: serverTimestamp() as never,
+      };
+      await setDoc(doc(db, "users", nextUser.uid), seed);
+      setProfile(seed);
+    } catch {
+      // The read or write was refused — almost always because the security
+      // rules have not been deployed. Fall back to what Auth itself knows so
+      // the app stays usable instead of hanging on a profile that never lands.
+      setProfile({
+        uid: nextUser.uid,
+        fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
+        email,
+        phone: "",
+        role: bootstrapRole,
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -100,12 +112,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       try {
         if (nextUser) {
+          // loadProfile handles its own failures, so a profile always lands.
           await loadProfile(nextUser);
         } else {
           setProfile(null);
         }
       } catch {
-        setProfile(null);
+        // Belt and braces: never leave the UI waiting on a profile.
+        if (nextUser) {
+          const email = nextUser.email ?? "";
+          setProfile({
+            uid: nextUser.uid,
+            fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
+            email,
+            phone: "",
+            role: "student",
+          });
+        } else {
+          setProfile(null);
+        }
       } finally {
         if (active) {
           setUser(nextUser);

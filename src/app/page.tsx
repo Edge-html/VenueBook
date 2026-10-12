@@ -12,7 +12,8 @@ import { Suspense } from "react";
 import { AvailabilitySearch } from "@/components/availability-search";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
-import { FACILITIES } from "@/lib/constants";
+import { FACILITIES, HERO_IMAGE } from "@/lib/constants";
+import { resolveImageSources } from "@/lib/image-sources.server";
 
 const FACILITY_ICONS = {
   gymnasium: Dumbbell,
@@ -27,8 +28,9 @@ export default function LandingPage() {
         <div className="relative overflow-hidden rounded-3xl bg-maroon-800 shadow-xl">
           <div className="absolute inset-0">
             <SmartImage
-              src="/images/knchs-building.jpg"
+              sources={resolveImageSources(HERO_IMAGE.photo, HERO_IMAGE.placeholder)}
               alt=""
+              loading="eager"
               className="h-full w-full object-cover object-right opacity-70"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-maroon-950 via-maroon-900/90 to-maroon-800/40" />
@@ -87,7 +89,7 @@ export default function LandingPage() {
               <article key={facility.id} className="card overflow-hidden">
                 <div className="h-44 w-full overflow-hidden bg-gradient-to-br from-maroon-800 to-maroon-950">
                   <SmartImage
-                    src={facility.image}
+                    sources={resolveImageSources(facility.image, facility.placeholder)}
                     alt={facility.name}
                     className="h-full w-full object-cover"
                   >

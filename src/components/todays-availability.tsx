@@ -6,6 +6,7 @@ import { FACILITIES, TIME_SLOTS } from "@/lib/constants";
 import { getMonthAvailability } from "@/lib/data";
 import { todayKey } from "@/lib/dates";
 import type { FacilityId, SlotState } from "@/lib/types";
+import { describeLoadError } from "@/lib/load-errors";
 import { useAsyncData } from "@/lib/use-async-data";
 import { LEGEND, SlotChip } from "./status-pill";
 
@@ -62,9 +63,7 @@ export function TodaysAvailability() {
             return (
               <div key={facility.id} className="flex items-center gap-2 rounded-lg bg-cream-100 px-3 py-2.5">
                 <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
-                <p className="text-xs text-neutral-600">
-                  Schedule unavailable right now. Check the availability page for details.
-                </p>
+                <p className="text-xs text-neutral-600">{describeLoadError(new Error(error), "Schedule unavailable.")}</p>
               </div>
             );
           }

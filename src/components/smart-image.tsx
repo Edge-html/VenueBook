@@ -3,33 +3,49 @@
 import { useCallback, useState, type CSSProperties } from "react";
 
 interface SmartImageProps {
-  src: string;
+  /**
+   * Ordered candidates. The first is the real photo; the last must always be a
+   * bundled placeholder so the page never requests a missing file.
+   */
+  sources: string[];
   alt: string;
   className?: string;
   style?: CSSProperties;
-  /** Rendered in place of the photo until a real file exists in `public/`. */
+  loading?: "lazy" | "eager";
+  /** Rendered only if every candidate fails. */
   children?: React.ReactNode;
 }
 
 /**
- * Drops in the real photo once it is added to `public/images/`; until then it
- * shows `children` instead of a broken-image icon.
+ * Swaps to the next candidate when a source fails to load.
  *
  * A 404 usually resolves *before* React hydrates, and that error event is then
- * never delivered — so the mounted element is inspected directly via a ref
- * callback rather than trusting `onError` alone. Tracking the failed `src`
- * (rather than a boolean) also means a new `src` retries without an effect.
+ * never delivered — so the mounted element is inspected via a ref callback
+ * rather than trusting `onError` alone. The index (not a boolean) is what gets
+ * tracked, which keeps each candidate from being retried forever.
  */
-export function SmartImage({ src, alt, className = "", style, children }: SmartImageProps) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+export function SmartImage({
+  sources,
+  alt,
+  className = "",
+  style,
+  loading = "lazy",
+  children,
+}: SmartImageProps) {
+  const [failedCount, setFailedCount] = useState(0);
+  const src = sources[failedCount];
 
   const inspect = useCallback((node: HTMLImageElement | null) => {
     if (node?.complete && node.naturalWidth === 0) {
-      setFailedSrc(node.getAttribute("src"));
+      setFailedCount((count) => count + 1);
     }
   }, []);
 
-  if (failedSrc === src) return <>{children}</>;
+  function handleError() {
+    setFailedCount((count) => count + 1);
+  }
+
+  if (!src) return <>{children}</>;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -39,8 +55,9 @@ export function SmartImage({ src, alt, className = "", style, children }: SmartI
       alt={alt}
       className={className}
       style={style}
+      loading={loading}
       decoding="async"
-      onError={() => setFailedSrc(src)}
+      onError={handleError}
     />
   );
 }

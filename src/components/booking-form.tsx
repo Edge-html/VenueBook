@@ -25,17 +25,32 @@ import {
 } from "@/lib/constants";
 import { createBooking, getMonthAvailability, uploadIdPhoto, validateIdPhoto } from "@/lib/data";
 import { addDays, formatLongDate, todayKey, toDateKey } from "@/lib/dates";
+import { describeLoadError } from "@/lib/load-errors";
 import type { FacilityId, SlotState } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
 export function BookingForm() {
-  const { profile } = useAuth();
+  const { profile, initialising } = useAuth();
 
-  // Wait for the profile so the name field can start filled in, instead of
-  // syncing it into state from an effect after mount.
-  if (!profile) return <FullPageLoader label="Preparing the booking form…" />;
+  // Wait for the auth state so the name field can start filled in. Spinning on
+  // `profile` alone would hang forever if the profile read was refused.
+  if (initialising) return <FullPageLoader label="Preparing the booking form…" />;
+
+  if (!profile) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <p className="font-display text-lg font-bold text-maroon-900">
+          We could not load your account
+        </p>
+        <p className="mt-1.5 text-sm text-neutral-600">
+          Please sign out and sign in again. If it keeps happening, an administrator needs to
+          deploy the database rules.
+        </p>
+      </div>
+    );
+  }
 
   return <BookingFields key={profile.uid} defaultFullName={profile.fullName} />;
 }
@@ -79,15 +94,19 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     [facilityId, date],
   );
 
-  const { data: slotData, loading: loadingSlots, reload: reloadSlots } = useAsyncData<
-    Record<string, Record<string, SlotState>>
-  >({
+  const {
+    data: slotData,
+    error: slotsError,
+    loading: loadingSlots,
+    reload: reloadSlots,
+  } = useAsyncData<Record<string, Record<string, SlotState>>>({
     cacheKey: `slots:${facilityId}:${date}`,
     load: loadSlots,
     fallback: {},
   });
 
   const slots = slotData?.[date];
+  const slotError = slotsError ? describeLoadError(new Error(slotsError), "Could not load the schedule.") : null;
 
   /** A slot held by someone else must not stay selected after a switch. */
   function changeFacility(next: FacilityId) {
@@ -311,10 +330,16 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             <p className="text-xs text-neutral-500">{formatLongDate(date)}</p>
           </div>
 
+          {slotError && (
+            <p className="mb-3 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
+              {slotError}
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {TIME_SLOTS.map((slot) => {
               const state: SlotState = slots?.[slot.id] ?? "available";
-              const unavailable = state !== "available";
+              const unavailable = state !== "available" || Boolean(slotError);
 
               return (
                 <button
@@ -327,7 +352,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                   className={`rounded-lg px-3 py-2.5 text-xs font-semibold transition-all ${
                     timeSlot === slot.id
                       ? "bg-maroon-700 text-white shadow-sm"
-                      : state === "available"
+                      : state === "available" && !slotError
                         ? "bg-available-soft text-available hover:bg-available hover:text-white"
                         : "cursor-not-allowed bg-cream-200 text-neutral-400"
                   }`}

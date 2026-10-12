@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="KNCHS Gymnasium placeholder">
+  <defs>
+    <linearGradient id="gym-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#681a31"/>
+      <stop offset="100%" stop-color="#3d0a1a"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#gym-bg)"/>
+
+  <!-- court lines -->
+  <g fill="none" stroke="#f0e2c0" stroke-opacity="0.13" stroke-width="3">
+    <rect x="110" y="120" width="580" height="210" rx="6"/>
+    <path d="M400 120v210"/>
+    <circle cx="400" cy="225" r="46"/>
+    <path d="M110 195v60M690 195v60"/>
+  </g>
+
+  <!-- bleachers -->
+  <g fill="#2c0613" opacity="0.5">
+    <rect x="110" y="330" width="580" height="16" rx="4"/>
+    <rect x="110" y="352" width="580" height="16" rx="4"/>
+    <rect x="110" y="374" width="580" height="16" rx="4"/>
+  </g>
+
+  <!-- gymnasium glyph -->
+  <g transform="translate(400 205)" stroke="#f0e2c0" stroke-opacity="0.34" stroke-width="4"
+     fill="none" stroke-linecap="round">
+    <path d="M-34-26h68M-34 26h68M-20-26v52M20-26v52M-6-26v52M6-26v52"/>
+  </g>
+
+  <text x="400" y="418" text-anchor="middle" fill="#f0e2c0" fill-opacity="0.45"
+        font-family="Georgia, serif" font-size="17" letter-spacing="5">KNCHS GYMNASIUM</text>
+</svg>

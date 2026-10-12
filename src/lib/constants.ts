@@ -9,7 +9,10 @@ export interface Facility {
   shortName: string;
   capacity: string;
   description: string;
+  /** Real photo to try first. */
   image: string;
+  /** Always-present fallback, so the page never requests a missing file. */
+  placeholder: string;
   /** Tailwind text colour for the facility glyph. */
   tone: string;
 }
@@ -22,6 +25,7 @@ export const FACILITIES: Facility[] = [
     capacity: "500+",
     description: "Sports, school activities, and events.",
     image: "/images/gymnasium.jpg",
+    placeholder: "/images/placeholders/gymnasium.svg",
     tone: "text-maroon-700",
   },
   {
@@ -31,9 +35,16 @@ export const FACILITIES: Facility[] = [
     capacity: "50–100",
     description: "Meetings, seminars, and presentations.",
     image: "/images/avr.jpg",
+    placeholder: "/images/placeholders/avr.svg",
     tone: "text-maroon-700",
   },
 ];
+
+/** Landing page hero backdrop. */
+export const HERO_IMAGE = {
+  photo: "/images/knchs-building.jpg",
+  placeholder: "/images/placeholders/building.svg",
+};
 
 export const FACILITY_BY_ID = Object.fromEntries(
   FACILITIES.map((f) => [f.id, f]),
