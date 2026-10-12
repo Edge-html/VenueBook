@@ -78,22 +78,28 @@ See `public/images/README.md` for recommended sizes.
 
 ## Firebase setup
 
-The web config lives in `src/lib/firebase.ts` with your project already filled
-in, so the app runs immediately. Every field can be overridden with a
-`NEXT_PUBLIC_FIREBASE_*` variable — copy `.env.example` to `.env.local` if you
-prefer.
+> **Do these six steps in order.** Skipping step 1 produces
+> `auth/configuration-not-found` on the sign-up page. Skipping step 3 produces
+> `Missing or insufficient permissions` on every screen, because Firestore's
+> default rules deny all reads and writes.
 
-### 1. Enable Authentication
+The web config already points at your project in `src/lib/firebase.ts`, and every
+field can be overridden with a `NEXT_PUBLIC_FIREBASE_*` variable.
 
-Firebase console → **Authentication** → **Sign-in method** → enable
-**Email/Password**.
+### 1. Enable Email/Password authentication
 
-Phone sign-in is handled by looking the number up in Firestore and using the
-email behind it, so no SMS provider is needed.
+Firebase console → **Authentication** → **Sign-in method** → **Email/Password**
+→ **Enable** → **Save**.
+
+Without this there is no way to create an account, because Firebase has no
+email/password provider to sign up against. Phone sign-in then works too — the
+number is matched against Firestore to find the email behind it, so no SMS
+provider is required.
 
 ### 2. Create the Firestore database
 
-Firebase console → **Firestore Database** → Create database.
+Firebase console → **Firestore Database** → **Create database** → pick a region
+near the Philippines → start in **production mode**.
 
 ### 3. Deploy the security rules and indexes
 
@@ -103,8 +109,8 @@ The rule and index files are included:
 - `firestore.indexes.json` → composite indexes
 - `storage.rules` → Storage security rules
 
-With the Firebase CLI logged in (`firebase login` and `firebase use
-<project-id>`), deploy them all with:
+With the Firebase CLI logged in (`firebase login`, then `firebase use
+simple-note-app-e9e59`), deploy all of them with:
 
 ```bash
 npm install -g firebase-tools
@@ -126,26 +132,31 @@ filters, which Firestore's automatic single-field indexes already cover.
 
 ### 4. Enable Storage
 
-Firebase console → **Storage** → Get started. Needed for school ID photos.
+Firebase console → **Storage** → **Get started**. Needed for school ID photos.
 
 ### 5. Add your production domain
 
 Firebase console → **Authentication** → **Settings** → **Authorized domains**
-→ add your Vercel domain, otherwise sign-in will fail in production.
+→ add your Vercel domain, otherwise sign-in fails in production.
 
-### 6. Make yourself an admin
+### 6. Create your admin account
 
-Set `NEXT_PUBLIC_ADMIN_EMAILS` in `.env.local` (and in Vercel) to a
-comma-separated list of emails:
+Add your email to `NEXT_PUBLIC_ADMIN_EMAILS` in **Vercel → Settings →
+Environment Variables**, then sign up through the site:
 
 ```
-NEXT_PUBLIC_ADMIN_EMAILS=admin@knchs.edu.ph
+NEXT_PUBLIC_ADMIN_EMAILS=solanaian53@gmail.com
 ```
 
-Anyone on that list is created as an `admin` the first time they sign in.
+Accounts on that list are written to Firestore with `role: "admin"` on first
+sign-in, and the **Admin console** link appears in the header.
 
-To promote an account later, open Firestore → `users` → the document → set
-`role` to `admin`.
+> `NEXT_PUBLIC_*` values are compiled into the JavaScript bundle at **build**
+> time. Setting it only in a local `.env.local` has no effect on the deployed
+> site — add it in Vercel, then **Redeploy** the project.
+
+To promote an existing account instead: Firestore → `users` → the document →
+set `role` to `admin`, then have that person sign out and back in.
 
 ---
 

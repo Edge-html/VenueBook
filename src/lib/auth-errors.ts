@@ -23,7 +23,8 @@ export function friendlyAuthError(error: unknown): string {
     case "auth/network-request-failed":
       return "Network error. Check your connection and try again.";
     case "auth/operation-not-allowed":
-      return "This sign-in method is disabled in the Firebase console.";
+    case "auth/configuration-not-found":
+      return "Email sign-in is not enabled for this project yet. An administrator needs to turn on Email/Password in the Firebase console (Authentication → Sign-in method).";
     case "auth/unauthorized-domain":
       return "This domain is not authorised in the Firebase console.";
     default:

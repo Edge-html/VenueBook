@@ -1,14 +1,20 @@
 # Venue photos
 
-Drop your images in this folder using exactly these names. The site renders a
-styled placeholder for any file that is missing, so you can add them one at a
-time and refresh the page.
+The site ships with on-brand SVG placeholders in `placeholders/`, so there are
+no broken images while you collect real photos.
+
+Drop your files in this folder using exactly these names and they will be used
+automatically on the next build — no code changes needed:
 
 | File                 | Used by                                    |
 | -------------------- | ------------------------------------------ |
 | `knchs-building.jpg` | Landing page hero background               |
-| `gymnasium.jpg`      | Gymnasium card, booking page               |
-| `avr.jpg`            | AVR card, booking page                     |
+| `gymnasium.jpg`      | Gymnasium card                             |
+| `avr.jpg`            | AVR card                                   |
+
+Candidates are checked against disk while the page is generated, so a missing
+file is never requested. The placeholder is only used when the real photo is
+absent.
 
 Recommended sizes:
 
