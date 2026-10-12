@@ -1,0 +1,94 @@
+"use client";
+
+import { CalendarDays, Dumbbell, MonitorPlay } from "lucide-react";
+import Link from "next/link";
+import { useCallback } from "react";
+import { StatusPill } from "@/components/status-pill";
+import { useAuth } from "@/lib/auth-context";
+import { FACILITY_BY_ID, SLOT_BY_ID } from "@/lib/constants";
+import { getBookingsForUser } from "@/lib/data";
+import { formatShortDate, todayKey } from "@/lib/dates";
+import type { Booking } from "@/lib/types";
+import { useAsyncData } from "@/lib/use-async-data";
+
+const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+
+export function DashboardOverview() {
+  const { user } = useAuth();
+
+  const load = useCallback(
+    () => (user ? getBookingsForUser(user.uid) : Promise.resolve<Booking[]>([])),
+    [user],
+  );
+
+  const { data, loading } = useAsyncData<Booking[]>({
+    cacheKey: `bookings:${user?.uid ?? "none"}`,
+    load,
+    fallback: [],
+  });
+
+  const today = todayKey();
+  const upcoming = (data ?? [])
+    .filter((b) => b.date >= today && (b.status === "approved" || b.status === "pending"))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4);
+
+  return (
+    <section className="card p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold text-maroon-900">
+          <CalendarDays className="h-5 w-5 text-maroon-600" />
+          Upcoming reservations
+        </h2>
+        <Link href="/reservations" className="text-sm font-semibold text-maroon-700 hover:underline">
+          View all
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-16 animate-pulse rounded-xl bg-cream-200" />
+          ))}
+        </div>
+      ) : upcoming.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-cream-300 px-4 py-8 text-center">
+          <p className="text-sm font-medium text-neutral-700">No upcoming reservations.</p>
+          <Link href="/book" className="btn btn-outline mt-4">
+            Book a facility
+          </Link>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {upcoming.map((booking) => {
+            const facility = FACILITY_BY_ID[booking.facilityId];
+            const Icon = ICONS[booking.facilityId];
+            const slot = SLOT_BY_ID[booking.timeSlot];
+
+            return (
+              <li
+                key={booking.id}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-cream-50 p-3"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-maroon-700 text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-neutral-900">
+                    {facility?.name ?? booking.facilityId}
+                  </p>
+                  <p className="text-xs text-neutral-600">
+                    {formatShortDate(booking.date)} &middot; {slot?.label ?? booking.timeSlot}
+                  </p>
+                </div>
+
+                <StatusPill status={booking.status} size="sm" />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}

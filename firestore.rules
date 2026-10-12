@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // A user owns their document, but nobody may promote themselves to admin.
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+                    && (!request.resource.data.keys().hasAny(['role'])
+                        || request.resource.data.role == 'student');
+      allow update: if isSelf(uid)
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn();
+      // Students create their own pending requests; admins manage the rest.
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid
+                                    && request.resource.data.diff(resource.data).affectedKeys()
+                                        .hasOnly(['status', 'idPhotoUrl']));
+      allow delete: if isAdmin();
+    }
+
+    // Admin-maintained closures. Everyone signed in can read the calendar.
+    match /blockedSlots/{slotId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      // Users may only flip their own `read` flag.
+      allow update: if isSignedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isSelf(resource.data.uid);
+      allow create: if false;
+    }
+  }
+}

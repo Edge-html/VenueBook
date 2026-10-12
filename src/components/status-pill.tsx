@@ -1,0 +1,78 @@
+import type { BookingStatus, SlotState } from "@/lib/types";
+
+const STATUS_STYLES: Record<BookingStatus, string> = {
+  pending: "bg-pending-soft text-pending",
+  approved: "bg-available-soft text-available",
+  rejected: "bg-booked-soft text-booked",
+  cancelled: "bg-cream-200 text-neutral-600",
+};
+
+const STATUS_LABELS: Record<BookingStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
+};
+
+export function StatusPill({
+  status,
+  size = "md",
+}: {
+  status: BookingStatus;
+  size?: "sm" | "md";
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${STATUS_STYLES[status]} ${
+        size === "sm" ? "px-2.5 py-0.5 text-[11px]" : "px-3 py-1 text-xs"
+      }`}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+const SLOT_STYLES: Record<SlotState, string> = {
+  available: "bg-available-soft text-available",
+  booked: "bg-booked-soft text-booked",
+  pending: "bg-pending-soft text-pending",
+  blocked: "bg-neutral-200 text-neutral-600",
+};
+
+const SLOT_LABELS: Record<SlotState, string> = {
+  available: "Available",
+  booked: "Booked",
+  pending: "Pending",
+  blocked: "Closed",
+};
+
+export function SlotChip({
+  state,
+  label,
+  className = "",
+}: {
+  state: SlotState;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <span
+      title={SLOT_LABELS[state]}
+      className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold ${SLOT_STYLES[state]} ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+export const LEGEND: Array<{ label: string; className: string }> = [
+  { label: "Available", className: "bg-available" },
+  { label: "Booked", className: "bg-booked" },
+  { label: "Pending", className: "bg-pending" },
+];
+
+export const FULL_LEGEND: typeof LEGEND = [
+  ...LEGEND,
+  { label: "Closed", className: "bg-neutral-400" },
+];
