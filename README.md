@@ -139,21 +139,21 @@ Firebase console → **Storage** → **Get started**. Needed for school ID photo
 Firebase console → **Authentication** → **Settings** → **Authorized domains**
 → add your Vercel domain, otherwise sign-in fails in production.
 
-### 6. Create your admin account
+### 6. Make yourself an admin
 
-Add your email to `NEXT_PUBLIC_ADMIN_EMAILS` in **Vercel → Settings →
-Environment Variables**, then sign up through the site:
+Sign up through the site normally — every new account is created as a
+**student**. Then promote yourself in the Firebase console:
 
-```
-NEXT_PUBLIC_ADMIN_EMAILS=solanaian53@gmail.com
-```
+1. Firebase console → **Firestore Database** → **Data** → `users`
+2. Open the document whose email is yours
+3. Change `role` from `student` to `admin`
+4. Sign out and sign back in — the **Admin console** link appears in the header
 
-Accounts on that list are written to Firestore with `role: "admin"` on first
-sign-in, and the **Admin console** link appears in the header.
-
-> `NEXT_PUBLIC_*` values are compiled into the JavaScript bundle at **build**
-> time. Setting it only in a local `.env.local` has no effect on the deployed
-> site — add it in Vercel, then **Redeploy** the project.
+There is deliberately no environment variable for this. Any list of admin emails
+shipped to the browser can be read by a visitor, who could then register with
+one of those addresses and grant themselves the ability to approve their own
+bookings. The rules enforce it instead: a new account may only ever be created
+with `role: "student"`, and only an existing admin can change anyone's role.
 
 To promote an existing account instead: Firestore → `users` → the document →
 set `role` to `admin`, then have that person sign out and back in.
@@ -207,8 +207,8 @@ automatic single-field indexes already cover.
 | Variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase web config (optional; defaults are set) |
-| `NEXT_PUBLIC_ADMIN_EMAILS` | Emails that become admins on first sign-in |
 
-Booking windows, time slots, facilities, grades and sections all live in
-`src/lib/constants.ts`. The site timezone is the browser's; adjust
+Admin rights are **not** environment-driven — they are set on the user document
+in Firestore. Booking windows, time slots, facilities, grades and sections all
+live in `src/lib/constants.ts`. The site timezone is the browser's; adjust
 `src/lib/dates.ts` if you need to pin it to Asia/Manila.

@@ -12,45 +12,71 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // A user owns their document, but nobody may promote themselves to admin.
+    // ── Users ────────────────────────────────────────────────
+    // An account may only ever be created as a student, and a student may only
+    // ever change their own name/phone. The role field is immutable to
+    // everyone except an existing admin — otherwise anyone could register with
+    // an "admin" email address and approve their own bookings.
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
-      allow create: if isSelf(uid)
-                    && (!request.resource.data.keys().hasAny(['role'])
-                        || request.resource.data.role == 'student');
-      allow update: if isSelf(uid)
-                    && request.resource.data.role == resource.data.role;
+
+      allow create: if isSelf(uid) && request.resource.data.role == 'student';
+
+      allow update: if isAdmin()
+                    || (isSelf(uid)
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['fullName', 'phone']));
+
       allow delete: if isAdmin();
     }
 
+    // ── Bookings ─────────────────────────────────────────────
+    // Students create their own pending requests; admins manage the rest.
     match /bookings/{bookingId} {
       allow read: if isSignedIn();
-      // Students create their own pending requests; admins manage the rest.
+
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.status == 'pending';
-      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid
-                                    && request.resource.data.diff(resource.data).affectedKeys()
-                                        .hasOnly(['status', 'idPhotoUrl']));
+
+      // A student may only cancel their own request. Everything that matters
+      // for approval (status, reviewer, venue, time) is admin-only.
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && resource.data.userId == request.auth.uid
+                        && resource.data.status in ['pending', 'approved']
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status'])
+                        && request.resource.data.status == 'cancelled');
+
       allow delete: if isAdmin();
     }
 
-    // Admin-maintained closures. Everyone signed in can read the calendar.
+    // ── Schedule closures ────────────────────────────────────
+    // Admin-maintained. Everyone signed in can read the calendar.
     match /blockedSlots/{slotId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
+    // ── Notifications ────────────────────────────────────────
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
-      // Users may only flip their own `read` flag.
+
+      // Recipients may only flip their own `read` flag.
       allow update: if isSignedIn()
                     && resource.data.uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
       allow delete: if isSelf(resource.data.uid);
+
+      // Only trusted server-side code (the Admin SDK or a Cloud Function)
+      // should write notifications.
       allow create: if false;
     }
   }

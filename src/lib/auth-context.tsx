@@ -30,13 +30,7 @@ import {
 } from "react";
 import { auth, db } from "./firebase";
 import { looksLikeEmail, normalizePhone } from "./phone";
-import type { Role, UserProfile } from "./types";
-
-/** Emails allowed to self-provision as admins on first sign-in. */
-const BOOTSTRAP_ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+import type { UserProfile } from "./types";
 
 export interface SignUpInput {
   fullName: string;
@@ -67,9 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = useCallback(async (nextUser: User) => {
     const email = nextUser.email ?? "";
-    const bootstrapRole: Role = BOOTSTRAP_ADMIN_EMAILS.includes(email.toLowerCase())
-      ? "admin"
-      : "student";
+    const displayName = nextUser.displayName ?? email.split("@")[0] ?? "Student";
 
     try {
       const snap = await getDoc(doc(db, "users", nextUser.uid));
@@ -80,13 +72,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // First sign-in on an account with no profile document yet.
+      // First sign-in on an account with no profile document yet. New accounts
+      // are always students — the security rules reject any other role here,
+      // and admins are promoted deliberately rather than self-granted.
       const seed: UserProfile = {
         uid: nextUser.uid,
-        fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
+        fullName: displayName,
         email,
         phone: "",
-        role: bootstrapRole,
+        role: "student",
         createdAt: serverTimestamp() as never,
       };
       await setDoc(doc(db, "users", nextUser.uid), seed);
@@ -97,10 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // the app stays usable instead of hanging on a profile that never lands.
       setProfile({
         uid: nextUser.uid,
-        fullName: nextUser.displayName ?? email.split("@")[0] ?? "Student",
+        fullName: displayName,
         email,
         phone: "",
-        role: bootstrapRole,
+        role: "student",
       });
     }
   }, []);
@@ -160,14 +154,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await updateProfile(credential.user, { displayName: fullName.trim() });
-    await setDoc(doc(db, "users", credential.user.uid), {
-      uid: credential.user.uid,
-      fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phoneE164,
-      role: BOOTSTRAP_ADMIN_EMAILS.includes(email.trim().toLowerCase()) ? "admin" : "student",
-      createdAt: serverTimestamp(),
-    } satisfies Omit<UserProfile, "createdAt"> & { createdAt: unknown });
+
+    // Never overwrite an existing profile: this can run on a re-signup, and a
+    // blanket write would silently reset an admin's role back to student.
+    const profileRef = doc(db, "users", credential.user.uid);
+    if (!(await getDoc(profileRef)).exists()) {
+      await setDoc(profileRef, {
+        uid: credential.user.uid,
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phoneE164,
+        // Always a student. Admins are promoted deliberately in the Firebase
+        // console, never by the client.
+        role: "student",
+        createdAt: serverTimestamp(),
+      } satisfies Omit<UserProfile, "createdAt"> & { createdAt: unknown });
+    }
   }, []);
 
   const resolveEmail = useCallback(async (identifier: string): Promise<string> => {
