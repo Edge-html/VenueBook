@@ -261,7 +261,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         endTime,
         fullName: fullName.trim(),
         grade,
-        section: section.trim().toUpperCase(),
+        section: section.trim(),
         idPhotoUrl,
         purpose: purpose.trim(),
         attendees: Number(attendees),
@@ -543,10 +543,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               id="section"
               type="text"
               value={section}
-              onChange={(event) =>
-                setSection(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
-              }
-              placeholder="e.g. F"
+              onChange={(event) => setSection(event.target.value)}
+              placeholder="e.g. F, STEM 1, Rizal"
               autoComplete="off"
               maxLength={SECTION_MAX_LENGTH}
               aria-invalid={Boolean(fieldErrors.section)}

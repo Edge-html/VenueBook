@@ -101,8 +101,12 @@ export const BLOCK_BY_ID = Object.fromEntries(
 
 export const GRADES = ["7", "8", "9", "10", "11", "12"] as const;
 
-/** Section is typed freely by the student, so there is no fixed list. */
-export const SECTION_MAX_LENGTH = 4;
+/**
+ * Section is typed freely by the student — single letters, "STEM 1", "Rizal"
+ * and so on — so the cap only exists to stop a pasted paragraph. The value is
+ * stored exactly as typed, apart from surrounding whitespace.
+ */
+export const SECTION_MAX_LENGTH = 40;
 
 /** How far ahead users are allowed to book. */
 export const BOOKING_WINDOW_DAYS = 60;
