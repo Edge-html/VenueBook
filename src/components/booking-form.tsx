@@ -34,12 +34,19 @@ import {
   validateIdPhoto,
 } from "@/lib/data";
 import { addDays, formatLongDate, todayKey, toDateKey } from "@/lib/dates";
-import { describeLoadError } from "@/lib/load-errors";
+import {
+  describeLoadError,
+  friendlyStorageError,
+  withTimeout,
+} from "@/lib/load-errors";
 import { formatClock, formatTimeRange, hourLabel, overlaps, toMinutes } from "@/lib/time";
 import type { FacilityId, SlotState } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+
+/** Storage can take a minute to give up; fail faster so the form stays usable. */
+const UPLOAD_TIMEOUT_MS = 15_000;
 
 export function BookingForm() {
   const { profile, initialising } = useAuth();
@@ -86,6 +93,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
   const [conflict, setConflict] = useState<string | null>(null);
   const [softWarning, setSoftWarning] = useState<string | null>(null);
   const [checkedKey, setCheckedKey] = useState("");
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
+  const [skipPhoto, setSkipPhoto] = useState(false);
 
   const [fullName, setFullName] = useState(defaultFullName);
   const [grade, setGrade] = useState("");
@@ -200,6 +209,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     }
 
     setFile(file);
+    setSkipPhoto(false);
+    setPhotoUploadFailed(false);
     setPreview((old) => {
       if (old) URL.revokeObjectURL(old);
       return URL.createObjectURL(file);
@@ -219,7 +230,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     if (fullName.trim().length < 3) next.fullName = "Please enter the full name.";
     if (!grade) next.grade = "Choose your grade.";
     if (!section) next.section = "Enter your section.";
-    if (!file) next.file = "Please attach a photo of your school ID.";
+    if (!file && !skipPhoto) next.file = "Please attach a photo of your school ID.";
     if (!date) next.date = "Choose a date.";
 
     if (!startTime) next.startTime = "Choose a start time.";
@@ -259,9 +270,21 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
     setSubmitting(true);
     setError(null);
+    setPhotoUploadFailed(false);
 
     try {
-      const idPhotoUrl = file ? await uploadIdPhoto(file, user.uid) : null;
+      let idPhotoUrl: string | null = null;
+
+      if (file && !skipPhoto) {
+        try {
+          idPhotoUrl = await withTimeout(uploadIdPhoto(file, user.uid), UPLOAD_TIMEOUT_MS);
+        } catch (uploadError) {
+          // A storage outage must not block the whole system. Tell the student
+          // plainly and let the request through without the photo.
+          setPhotoUploadFailed(true);
+          setError(friendlyStorageError(uploadError));
+        }
+      }
 
       await createBooking({
         facilityId,
@@ -270,7 +293,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         endTime,
         fullName: fullName.trim(),
         grade,
-        section,
+        section: section.trim().toUpperCase(),
         idPhotoUrl,
         purpose: purpose.trim(),
         attendees: Number(attendees),
@@ -700,6 +723,36 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
           {fieldErrors.file && (
             <p className="mt-1.5 text-xs font-medium text-booked">{fieldErrors.file}</p>
+          )}
+
+          {photoUploadFailed && (
+            <div className="mt-3 rounded-lg border border-pending/40 bg-pending-soft px-3 py-3 text-sm text-pending">
+              <p className="font-medium">Your ID photo did not upload, but you can still submit.</p>
+              <p className="mt-1 text-xs">
+                An admin can request the photo later. If this keeps happening, ask them to enable
+                Firebase Storage for the project.
+              </p>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="mt-2 text-xs font-semibold underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {preview && !skipPhoto && (
+            <button
+              type="button"
+              onClick={() => {
+                setSkipPhoto(true);
+                setError(null);
+              }}
+              className="mt-2 text-xs font-semibold text-maroon-700 hover:underline"
+            >
+              Skip the photo and submit without it
+            </button>
           )}
         </div>
 
