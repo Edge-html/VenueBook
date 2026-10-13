@@ -28,7 +28,7 @@ const SEGMENT_STYLES: Record<SlotState, string> = {
   available: "bg-available",
   booked: "bg-booked",
   pending: "bg-pending",
-  blocked: "bg-ink-300",
+  blocked: "bg-closed",
 };
 
 export function AvailabilityCalendar() {

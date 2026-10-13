@@ -37,7 +37,7 @@ const SLOT_STYLES: Record<SlotState, string> = {
   available: "bg-available-soft text-available",
   booked: "bg-booked-soft text-booked",
   pending: "bg-pending-soft text-pending",
-  blocked: "bg-ink-200 text-ink-600",
+  blocked: "bg-closed-soft text-closed",
 };
 
 const SLOT_LABELS: Record<SlotState, string> = {
@@ -77,5 +77,5 @@ export const LEGEND: Array<{ label: string; className: string }> = [
 
 export const FULL_LEGEND: typeof LEGEND = [
   ...LEGEND,
-  { label: "Closed", className: "bg-ink-400" },
+  { label: "Closed", className: "bg-closed" },
 ];
