@@ -1,10 +1,11 @@
-import { ArrowRight, Dumbbell, MapPin, MonitorPlay, Users } from "lucide-react";
+import { ArrowRight, Dumbbell, MonitorPlay, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AvailabilitySearch } from "@/components/availability-search";
 import { HomeAccountSections } from "@/components/home-account-sections";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
+import { VisitorCta } from "@/components/visitor-cta";
 import { VisitorFeatures } from "@/components/visitor-features";
 import { FACILITIES, HERO_IMAGE } from "@/lib/constants";
 import { resolveImageSources } from "@/lib/image-sources.server";
@@ -114,28 +115,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Closing call to action ────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6">
-        <div className="flex flex-col items-start gap-4 rounded-lg border border-ink-200 bg-white px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
-              <MapPin className="h-4 w-4 text-brand-700" />
-              Ready to reserve a space?
-            </h2>
-            <p className="mt-1 text-sm text-ink-600">
-              Create an account and send your request in under a minute.
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Link href="/signup" className="btn btn-primary">
-              Create Account
-            </Link>
-            <Link href="/book" className="btn btn-outline">
-              Book Now
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* ── Closing call to action (signed-out visitors only) ── */}
+      <Suspense fallback={null}>
+        <VisitorCta />
+      </Suspense>
     </>
   );
 }
