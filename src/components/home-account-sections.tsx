@@ -6,10 +6,10 @@ import {
   CalendarCheck,
   CalendarSearch,
   ClipboardList,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback } from "react";
+import { AdminConsole } from "@/components/admin-console";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { useAuth } from "@/lib/auth-context";
 import { getBookingsForUser, getNotifications } from "@/lib/data";
@@ -43,12 +43,32 @@ const ACTIONS = [
 ];
 
 /**
- * The signed-in half of the home page: greeting, the four main functions, and
- * upcoming reservations. Renders nothing at all for visitors, so the landing
- * page stays a plain marketing page while signed out.
+ * The signed-in half of the home page.
+ *
+ * For an admin this *is* the home page — the console replaces the student
+ * functions entirely, so opening Home drops you straight into approvals.
+ * Students get their greeting, the four main functions, and upcoming
+ * reservations. Visitors get nothing, so the landing page stays a plain
+ * marketing page while signed out.
  */
 export function HomeAccountSections() {
-  const { profile, user, isAdmin, initialising } = useAuth();
+  const { user, initialising, isAdmin } = useAuth();
+
+  if (initialising || !user) return null;
+
+  if (isAdmin) {
+    return (
+      <div className="border-t border-cream-300 pt-8">
+        <AdminConsole />
+      </div>
+    );
+  }
+
+  return <StudentSections />;
+}
+
+function StudentSections() {
+  const { profile, user } = useAuth();
 
   const loadCounts = useCallback(async () => {
     if (!user) return { unread: 0, pending: 0 };
@@ -69,8 +89,6 @@ export function HomeAccountSections() {
     load: loadCounts,
   });
 
-  if (initialising || !user) return null;
-
   const pending = counts?.pending ?? 0;
   const unread = counts?.unread ?? 0;
 
@@ -84,33 +102,13 @@ export function HomeAccountSections() {
   return (
     <div className="animate-fade-up space-y-6">
       <section className="border-t border-cream-300 pt-8">
-        <p className="text-sm font-medium text-maroon-700">
-          Welcome back, {firstName}
-        </p>
+        <p className="text-sm font-medium text-maroon-700">Welcome back, {firstName}</p>
         <h2 className="mt-1 font-display text-2xl font-extrabold text-maroon-900">
           {pending > 0
             ? `You have ${pending} request${pending > 1 ? "s" : ""} waiting for review.`
             : "What would you like to book today?"}
         </h2>
       </section>
-
-      {isAdmin && (
-        <Link
-          href="/admin"
-          className="group flex items-center gap-4 rounded-2xl border border-gold-300 bg-gold-200/50 p-5 transition-colors hover:bg-gold-200/70"
-        >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-maroon-800 text-white">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-base font-bold text-maroon-900">Admin console</p>
-            <p className="text-sm text-neutral-700">
-              Review student requests and edit the venue schedule.
-            </p>
-          </div>
-          <ArrowRight className="ml-auto h-5 w-5 shrink-0 text-maroon-700 transition-transform group-hover:translate-x-1" />
-        </Link>
-      )}
 
       <section className="grid gap-4 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
