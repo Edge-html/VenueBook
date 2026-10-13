@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useCallback } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { useAuth } from "@/lib/auth-context";
-import { FACILITY_BY_ID, SLOT_BY_ID } from "@/lib/constants";
+import { FACILITY_BY_ID } from "@/lib/constants";
 import { getBookingsForUser } from "@/lib/data";
 import { formatShortDate, todayKey } from "@/lib/dates";
+import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -63,7 +64,7 @@ export function DashboardOverview() {
           {upcoming.map((booking) => {
             const facility = FACILITY_BY_ID[booking.facilityId];
             const Icon = ICONS[booking.facilityId];
-            const slot = SLOT_BY_ID[booking.timeSlot];
+            const range = formatTimeRange(booking.startTime, booking.endTime);
 
             return (
               <li
@@ -79,7 +80,7 @@ export function DashboardOverview() {
                     {facility?.name ?? booking.facilityId}
                   </p>
                   <p className="text-xs text-neutral-600">
-                    {formatShortDate(booking.date)} &middot; {slot?.label ?? booking.timeSlot}
+                    {formatShortDate(booking.date)} &middot; {range}
                   </p>
                 </div>
 

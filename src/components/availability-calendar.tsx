@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { FULL_LEGEND, SlotChip } from "@/components/status-pill";
-import { BOOKING_WINDOW_DAYS, FACILITIES, TIME_SLOTS } from "@/lib/constants";
+import { BOOKING_WINDOW_DAYS, FACILITIES, TIME_BLOCKS } from "@/lib/constants";
 import { getMonthAvailability } from "@/lib/data";
 import {
   addDays,
@@ -228,7 +228,7 @@ export function AvailabilityCalendar() {
                           <span key={i} className="h-full flex-1 bg-cream-300" />
                         ))
                       : slots
-                        ? TIME_SLOTS.map((slot) => (
+                        ? TIME_BLOCKS.map((slot) => (
                             <span
                               key={slot.id}
                               className={`h-full flex-1 ${
@@ -274,7 +274,7 @@ export function AvailabilityCalendar() {
 
           {error ? (
             <div className="space-y-2">
-              {TIME_SLOTS.map((slot) => (
+              {TIME_BLOCKS.map((slot) => (
                 <div
                   key={slot.id}
                   className="flex h-10 items-center gap-3 rounded-lg bg-cream-200 px-3 text-xs font-medium text-neutral-400"
@@ -286,7 +286,7 @@ export function AvailabilityCalendar() {
             </div>
           ) : (
             <div className="space-y-2">
-              {TIME_SLOTS.map((slot) =>
+              {TIME_BLOCKS.map((slot) =>
                 loading || !selectedSlots ? (
                   <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-cream-200" />
                 ) : (

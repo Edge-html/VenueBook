@@ -16,7 +16,8 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { MAX_ID_PHOTO_BYTES, TIME_SLOTS } from "./constants";
+import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
+import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
 import type {
   AppNotification,
   BlockedSlot,
@@ -78,19 +79,69 @@ export async function removeUploadedIdPhoto(url: string | null): Promise<void> {
 /* ── Availability ──────────────────────────────────────────────────────── */
 
 export interface DaySnapshot {
-  /** Slot id → state. Every slot in TIME_SLOTS is present. */
+  /** Block id → state. Every block in TIME_BLOCKS is present. */
   slots: Record<string, SlotState>;
   bookings: Booking[];
   blocks: BlockedSlot[];
 }
 
 function emptySlots(): Record<string, SlotState> {
-  return Object.fromEntries(TIME_SLOTS.map((s) => [s.id, "available" as SlotState]));
+  return Object.fromEntries(TIME_BLOCKS.map((b) => [b.id, "available" as SlotState]));
 }
 
 /**
- * Loads one facility-day and folds bookings + blocks into a single status per
- * slot. An approved booking always wins; a pending booking shows as pending so
+ * Folds a day's bookings and admin closures into one state per fixed block.
+ *
+ * Because bookings are free-form (9 AM–12 PM, say), a block is marked by
+ * *overlap* rather than equality — a block overlapping an approved booking is
+ * "booked" for its whole span. Approved beats pending beats closed.
+ */
+function foldIntoBlocks(
+  bookings: Booking[],
+  blocks: BlockedSlot[],
+  date: string,
+): Record<string, SlotState> {
+  const slots = emptySlots();
+
+  const dayBlocks = blocks.filter((b) => b.date === date);
+  const dayBookings = bookings.filter((b) => b.date === date);
+
+  for (const block of TIME_BLOCKS) {
+    let state: SlotState = "available";
+
+    for (const closure of dayBlocks) {
+      const closureBlock = BLOCK_BY_ID[closure.timeSlot];
+      if (!closureBlock) continue;
+      if (!overlaps(block.startMin, block.endMin, closureBlock.startMin, closureBlock.endMin)) {
+        continue;
+      }
+      if (state === "available") state = "blocked";
+    }
+
+    for (const booking of dayBookings) {
+      if (booking.status !== "approved" && booking.status !== "pending") continue;
+
+      const startMin = toMinutes(booking.startTime);
+      const endMin = toMinutes(booking.endTime);
+      if (startMin === null || endMin === null) continue;
+      if (!overlaps(block.startMin, block.endMin, startMin, endMin)) continue;
+
+      if (booking.status === "approved") {
+        state = "booked";
+        break;
+      }
+      if (state === "available") state = "pending";
+    }
+
+    slots[block.id] = state;
+  }
+
+  return slots;
+}
+
+/**
+ * Loads one facility-day and resolves the state of every block.
+ * An approved booking always wins; a pending booking shows as pending so
  * students can see it is spoken for.
  */
 export async function getDayAvailability(
@@ -116,22 +167,8 @@ export async function getDayAvailability(
 
   const bookings = bookingSnap.docs.map(toBooking);
   const blocks = blockSnap.docs.map(toBlockedSlot);
-  const slots = emptySlots();
 
-  for (const block of blocks) {
-    if (slots[block.timeSlot] !== "booked") slots[block.timeSlot] = "blocked";
-  }
-
-  for (const booking of bookings) {
-    const current = slots[booking.timeSlot];
-    if (booking.status === "approved") {
-      slots[booking.timeSlot] = "booked";
-    } else if (booking.status === "pending" && current === "available") {
-      slots[booking.timeSlot] = "pending";
-    }
-  }
-
-  return { slots, bookings, blocks };
+  return { slots: foldIntoBlocks(bookings, blocks, date), bookings, blocks };
 }
 
 /** Firestore caps `in` at 30 values, so long ranges are chunked. */
@@ -145,7 +182,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 /**
  * Calendar-sized read: two `in` queries per 25 days instead of two per day.
- * Returns `date → slot id → state`, with every requested date present.
+ * Returns `date → block id → state`, with every requested date present.
  */
 export async function getMonthAvailability(
   facilityId: FacilityId,
@@ -178,27 +215,67 @@ export async function getMonthAvailability(
 
   const result: Record<string, Record<string, SlotState>> = {};
   for (const date of dates) {
-    const slots = emptySlots();
-
-    for (const block of blocks) {
-      if (block.date !== date) continue;
-      if (slots[block.timeSlot] !== "booked") slots[block.timeSlot] = "blocked";
-    }
-
-    for (const booking of bookings) {
-      if (booking.date !== date) continue;
-      const current = slots[booking.timeSlot];
-      if (booking.status === "approved") {
-        slots[booking.timeSlot] = "booked";
-      } else if (booking.status === "pending" && current === "available") {
-        slots[booking.timeSlot] = "pending";
-      }
-    }
-
-    result[date] = slots;
+    result[date] = foldIntoBlocks(bookings, blocks, date);
   }
 
   return result;
+}
+
+/**
+ * Checks a requested range against everything already on the day: returns the
+ * first hard conflict (approved booking or admin closure) and whether a pending
+ * request already overlaps. `ignoreBookingId` excludes a booking from itself.
+ */
+export async function findRangeConflicts(
+  facilityId: FacilityId,
+  date: string,
+  startTime: string,
+  endTime: string,
+  ignoreBookingId?: string,
+): Promise<{ hard: string | null; pending: string | null }> {
+  const startMin = toMinutes(startTime);
+  const endMin = toMinutes(endTime);
+  if (startMin === null || endMin === null) {
+    return { hard: "That time is not valid.", pending: null };
+  }
+
+  const [day, blocks] = await Promise.all([
+    getDayAvailability(facilityId, date),
+    getBlocks(facilityId, date),
+  ]);
+
+  const { bookings } = day;
+
+  let hard: string | null = null;
+  let pending: string | null = null;
+
+  for (const closure of blocks) {
+    if (hard) break;
+    const closureBlock = BLOCK_BY_ID[closure.timeSlot];
+    if (!closureBlock) continue;
+    if (overlaps(startMin, endMin, closureBlock.startMin, closureBlock.endMin)) {
+      hard = `The venue is closed for ${closure.reason.toLowerCase()} during part of that time.`;
+    }
+  }
+
+  for (const booking of bookings) {
+    if (booking.id === ignoreBookingId) continue;
+
+    const bookingStart = toMinutes(booking.startTime);
+    const bookingEnd = toMinutes(booking.endTime);
+    if (bookingStart === null || bookingEnd === null) continue;
+    if (!overlaps(startMin, endMin, bookingStart, bookingEnd)) continue;
+
+    const range = formatTimeRange(booking.startTime, booking.endTime);
+
+    if (booking.status === "approved") {
+      if (!hard) hard = `That time overlaps an approved booking (${range}).`;
+    } else if (booking.status === "pending" && !pending) {
+      pending = `Someone has a request pending for ${range}. You can still submit, but an admin may only approve one.`;
+    }
+  }
+
+  return { hard, pending };
 }
 
 /* ── Bookings ──────────────────────────────────────────────────────────── */
@@ -206,7 +283,10 @@ export async function getMonthAvailability(
 export interface NewBookingInput {
   facilityId: FacilityId;
   date: string;
-  timeSlot: string;
+  /** "HH:mm", 24-hour. */
+  startTime: string;
+  /** "HH:mm", 24-hour. Must be after `startTime`. */
+  endTime: string;
   fullName: string;
   grade: string;
   section: string;
@@ -218,8 +298,12 @@ export interface NewBookingInput {
 }
 
 export async function createBooking(input: NewBookingInput): Promise<string> {
+  const { startTime, endTime, ...rest } = input;
+
   const created = await addDoc(collection(db, COLLECTIONS.bookings), {
-    ...input,
+    ...rest,
+    startTime,
+    endTime,
     status: "pending" satisfies BookingStatus,
     createdAt: serverTimestamp(),
   });
@@ -270,26 +354,39 @@ export async function cancelBooking(bookingId: string, byAdmin = false): Promise
   );
 }
 
-/** Frees the slot only when nothing else still holds it. */
-async function isSlotStillHeld(
+/** True when any *other* active booking still overlaps this one. */
+async function isRangeStillHeld(
   facilityId: FacilityId,
   date: string,
-  timeSlot: string,
+  startTime: string,
+  endTime: string,
   excludeBookingId: string,
 ): Promise<boolean> {
+  const startMin = toMinutes(startTime);
+  const endMin = toMinutes(endTime);
+  if (startMin === null || endMin === null) return false;
+
   const snap = await getDocs(
     query(
       collection(db, COLLECTIONS.bookings),
       where("facilityId", "==", facilityId),
       where("date", "==", date),
-      where("timeSlot", "==", timeSlot),
     ),
   );
 
   return snap.docs.some((d) => {
     if (d.id === excludeBookingId) return false;
-    const status = (d.data() as DocumentData).status as BookingStatus;
-    return status === "approved" || status === "pending";
+
+    const data = d.data() as DocumentData;
+    const status = data.status as BookingStatus;
+    if (status !== "approved" && status !== "pending") return false;
+
+    const other = parseBooking(d.id, data);
+    const otherStart = toMinutes(other.startTime);
+    const otherEnd = toMinutes(other.endTime);
+    if (otherStart === null || otherEnd === null) return false;
+
+    return overlaps(startMin, endMin, otherStart, otherEnd);
   });
 }
 
@@ -337,7 +434,7 @@ export async function getBlocks(facilityId: FacilityId, date: string): Promise<B
  * remains on it. Prevents an approved clash from being wiped out wholesale.
  */
 export async function removeBooking(booking: Booking): Promise<void> {
-  if (await isSlotStillHeld(booking.facilityId, booking.date, booking.timeSlot, booking.id)) {
+  if (await isRangeStillHeld(booking.facilityId, booking.date, booking.startTime, booking.endTime, booking.id)) {
     await cancelBooking(booking.id, true);
     return;
   }
@@ -431,12 +528,32 @@ export async function notifyUser(
 /* ── Mapping ───────────────────────────────────────────────────────────── */
 
 function toBooking(snap: QueryDocumentSnapshot<DocumentData>): Booking {
-  const data = snap.data() as DocumentData;
+  return parseBooking(snap.id, snap.data() as DocumentData);
+}
+
+/**
+ * Bookings written before free-form times only have a block id, so their exact
+ * range is recovered from that block.
+ */
+function parseBooking(id: string, data: DocumentData): Booking {
+  let startTime = (data.startTime as string) ?? "";
+  let endTime = (data.endTime as string) ?? "";
+
+  if ((!startTime || !endTime) && data.timeSlot) {
+    const block = BLOCK_BY_ID[data.timeSlot as string];
+    if (block) {
+      startTime ||= fromMinutes(block.startMin);
+      endTime ||= fromMinutes(block.endMin);
+    }
+  }
+
   return {
-    id: snap.id,
+    id,
     facilityId: data.facilityId as FacilityId,
     date: data.date as string,
-    timeSlot: data.timeSlot as string,
+    startTime,
+    endTime,
+    timeSlot: (data.timeSlot as string) ?? undefined,
     status: data.status as BookingStatus,
     userId: data.userId as string,
     fullName: data.fullName as string,

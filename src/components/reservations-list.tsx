@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { useAuth } from "@/lib/auth-context";
-import { FACILITY_BY_ID, SLOT_BY_ID } from "@/lib/constants";
+import { FACILITY_BY_ID } from "@/lib/constants";
 import { cancelBooking, getBookingsForUser } from "@/lib/data";
 import { formatLongDate, todayKey } from "@/lib/dates";
+import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -156,7 +157,7 @@ function ReservationCard({
 }) {
   const facility = FACILITY_BY_ID[booking.facilityId];
   const Icon = ICONS[booking.facilityId];
-  const slot = SLOT_BY_ID[booking.timeSlot];
+  const range = formatTimeRange(booking.startTime, booking.endTime);
 
   const canCancel =
     (booking.status === "pending" || booking.status === "approved") &&
@@ -178,7 +179,7 @@ function ReservationCard({
           </div>
 
           <p className="mt-1 text-sm text-neutral-700">
-            {formatLongDate(booking.date)} &middot; {slot?.label ?? booking.timeSlot}
+            {formatLongDate(booking.date)} &middot; {range}
           </p>
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">

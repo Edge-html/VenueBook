@@ -50,25 +50,43 @@ export const FACILITY_BY_ID = Object.fromEntries(
   FACILITIES.map((f) => [f.id, f]),
 ) as Record<FacilityId, Facility>;
 
-export interface TimeSlot {
+/**
+ * Opening hours, in minutes since midnight. Bookings may start and end
+ * anywhere inside this window, to the minute.
+ */
+export const OPENING_MINUTES = 7 * 60; // 07:00
+export const CLOSING_MINUTES = 19 * 60; // 19:00
+
+/** Smallest bookable duration. */
+export const MIN_DURATION_MINUTES = 60;
+
+/**
+ * Fixed blocks used only for the at-a-glance availability strip and for admin
+ * closures. A booking may span any part of these — see `startTime`/`endTime`
+ * on a booking.
+ */
+export interface TimeBlock {
   id: string;
   label: string;
-  start: number;
-  end: number;
+  startMin: number;
+  endMin: number;
 }
 
-export const TIME_SLOTS: TimeSlot[] = [
-  { id: "07-09", label: "7–9 AM", start: 7, end: 9 },
-  { id: "09-11", label: "9–11 AM", start: 9, end: 11 },
-  { id: "11-13", label: "11 AM–1 PM", start: 11, end: 13 },
-  { id: "13-15", label: "1–3 PM", start: 13, end: 15 },
-  { id: "15-17", label: "3–5 PM", start: 15, end: 17 },
-  { id: "17-19", label: "5–7 PM", start: 17, end: 19 },
+export const TIME_BLOCKS: TimeBlock[] = [
+  { id: "07-09", label: "7–9 AM", startMin: 7 * 60, endMin: 9 * 60 },
+  { id: "09-11", label: "9–11 AM", startMin: 9 * 60, endMin: 11 * 60 },
+  { id: "11-13", label: "11 AM–1 PM", startMin: 11 * 60, endMin: 13 * 60 },
+  { id: "13-15", label: "1–3 PM", startMin: 13 * 60, endMin: 15 * 60 },
+  { id: "15-17", label: "3–5 PM", startMin: 15 * 60, endMin: 17 * 60 },
+  { id: "17-19", label: "5–7 PM", startMin: 17 * 60, endMin: 19 * 60 },
 ];
 
-export const SLOT_BY_ID = Object.fromEntries(
-  TIME_SLOTS.map((s) => [s.id, s]),
-) as Record<string, TimeSlot>;
+/** Back-compat alias while the UI still refers to blocks as slots. */
+export const TIME_SLOTS = TIME_BLOCKS;
+
+export const BLOCK_BY_ID = Object.fromEntries(
+  TIME_BLOCKS.map((b) => [b.id, b]),
+) as Record<string, TimeBlock>;
 
 export const GRADES = ["7", "8", "9", "10", "11", "12"] as const;
 export const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"] as const;

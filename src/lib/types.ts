@@ -20,8 +20,12 @@ export interface Booking {
   facilityId: FacilityId;
   /** Calendar day in `YYYY-MM-DD` form, always local to the school. */
   date: string;
-  /** Slot id, e.g. `07-09`. */
-  timeSlot: string;
+  /** Start time in 24-hour "HH:mm". Bookings are free-form, not block-sized. */
+  startTime: string;
+  /** End time in 24-hour "HH:mm". Always after `startTime`. */
+  endTime: string;
+  /** Legacy block id, only present on bookings created before free-form times. */
+  timeSlot?: string;
   status: BookingStatus;
   userId: string;
   fullName: string;

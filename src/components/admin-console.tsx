@@ -25,7 +25,8 @@ import {
   unblockSlot,
 } from "@/lib/data";
 import { formatLongDate, formatShortDate, todayKey } from "@/lib/dates";
-import { BOOKING_WINDOW_DAYS, FACILITIES, FACILITY_BY_ID, SLOT_BY_ID, TIME_SLOTS } from "@/lib/constants";
+import { BOOKING_WINDOW_DAYS, FACILITIES, FACILITY_BY_ID, TIME_BLOCKS } from "@/lib/constants";
+import { formatTimeRange } from "@/lib/time";
 import type { BlockedSlot, Booking, BookingStatus, FacilityId } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -108,8 +109,8 @@ export function AdminConsole() {
 
     const note = noteDraft[booking.id] ?? "";
     const facility = FACILITY_BY_ID[booking.facilityId];
-    const slot = SLOT_BY_ID[booking.timeSlot];
-    const when = `${formatShortDate(booking.date)} at ${slot?.label ?? booking.timeSlot}`;
+    const range = formatTimeRange(booking.startTime, booking.endTime);
+    const when = `${formatShortDate(booking.date)} at ${range}`;
 
     try {
       await setBookingStatus(booking.id, decision, { uid: user.uid, name: adminName }, note);
@@ -380,7 +381,7 @@ export function AdminConsole() {
           </div>
 
           <ul className="space-y-2">
-            {TIME_SLOTS.map((slot) => {
+            {TIME_BLOCKS.map((slot) => {
               const block = blocks.find((b) => b.timeSlot === slot.id);
               const Icon = ICONS[scheduleFacility];
 
@@ -478,7 +479,7 @@ function AdminBookingCard({
 }) {
   const facility = FACILITY_BY_ID[booking.facilityId];
   const Icon = ICONS[booking.facilityId];
-  const slot = SLOT_BY_ID[booking.timeSlot];
+  const range = formatTimeRange(booking.startTime, booking.endTime);
   const pending = booking.status === "pending";
 
   return (
@@ -498,7 +499,7 @@ function AdminBookingCard({
 
           <p className="mt-0.5 text-sm text-neutral-700">
             Grade {booking.grade}-{booking.section} &middot; {facility?.name} &middot;{" "}
-            {formatLongDate(booking.date)} &middot; {slot?.label ?? booking.timeSlot}
+            {formatLongDate(booking.date)} &middot; {range}
           </p>
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
