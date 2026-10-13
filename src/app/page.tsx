@@ -1,7 +1,8 @@
 import { ArrowRight, Dumbbell, MonitorPlay, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { AvailabilitySearch } from "@/components/availability-search";
+import { DashboardOverview } from "@/components/dashboard-overview";
+import { HeroActions } from "@/components/hero-actions";
 import { HomeAccountSections } from "@/components/home-account-sections";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
@@ -45,7 +46,7 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-7">
-              <AvailabilitySearch />
+              <HeroActions />
             </div>
           </div>
         </div>
@@ -56,21 +57,29 @@ export default function LandingPage() {
         <VisitorFeatures />
       </Suspense>
 
-      {/* Signed-in visitors also get their four main functions here. */}
+      {/* Signed-in visitors get their four main functions here. */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <Suspense fallback={null}>
           <HomeAccountSections />
         </Suspense>
       </div>
 
-      {/* ── Facilities + today's availability ────────────────── */}
+      {/* Today's schedule sits where the upcoming reservations used to be —
+          it is the more immediately useful of the two. */}
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
+        <Suspense fallback={null}>
+          <TodaysAvailability />
+        </Suspense>
+      </div>
+
+      {/* ── Facilities + upcoming reservations ────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="mb-5 flex items-center gap-3">
           <h2 className="section-title">Our Facilities</h2>
           <span className="h-px flex-1 bg-ink-200" />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
+        <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FACILITIES.map((facility) => {
             const Icon = FACILITY_ICONS[facility.id];
 
@@ -109,9 +118,12 @@ export default function LandingPage() {
             );
           })}
 
-          <Suspense fallback={<AvailabilityPlaceholder />}>
-            <TodaysAvailability />
-          </Suspense>
+          {/* Upcoming reservations took the place of today's schedule. */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Suspense fallback={null}>
+              <DashboardOverview />
+            </Suspense>
+          </div>
         </div>
       </section>
 
@@ -120,25 +132,5 @@ export default function LandingPage() {
         <VisitorCta />
       </Suspense>
     </>
-  );
-}
-
-function AvailabilityPlaceholder() {
-  return (
-    <aside className="card h-full p-5" aria-hidden="true">
-      <h3 className="mb-4 h-6 w-48 animate-pulse rounded-lg bg-ink-200" />
-      <div className="space-y-5">
-        {Array.from({ length: 2 }).map((_, row) => (
-          <div key={row}>
-            <div className="mb-2 h-7 w-40 animate-pulse rounded-lg bg-ink-200" />
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {Array.from({ length: 6 }).map((__, cell) => (
-                <div key={cell} className="h-9 animate-pulse rounded-lg bg-ink-200" />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </aside>
   );
 }

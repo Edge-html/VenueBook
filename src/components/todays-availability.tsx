@@ -1,22 +1,39 @@
 "use client";
 
-import { Dumbbell, MonitorPlay } from "lucide-react";
+import { CalendarDays, Clock, Dumbbell, MonitorPlay } from "lucide-react";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { FACILITIES, TIME_BLOCKS } from "@/lib/constants";
+import { FACILITIES, OPENING_HOURS_LABEL, TIME_BLOCKS } from "@/lib/constants";
 import { getMonthAvailability } from "@/lib/data";
-import { todayKey } from "@/lib/dates";
-import type { FacilityId, SlotState } from "@/lib/types";
+import { formatLongDate, todayKey } from "@/lib/dates";
 import { describeLoadError } from "@/lib/load-errors";
 import { useAsyncData } from "@/lib/use-async-data";
 import { useIsMounted } from "@/lib/use-is-mounted";
-import { LEGEND, SlotChip } from "./status-pill";
+import { SlotChip } from "@/components/status-pill";
+import type { FacilityId, SlotState } from "@/lib/types";
 
 const FACILITY_ICONS: Record<FacilityId, typeof Dumbbell> = {
   gymnasium: Dumbbell,
   avr: MonitorPlay,
 };
+
+/** Ticks the clock so the panel never shows a stale time. */
+function useNow(enabled: boolean): Date | null {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const update = () => setNow(new Date());
+    update();
+    const timer = setInterval(update, 30_000);
+
+    return () => clearInterval(timer);
+  }, [enabled]);
+
+  return now;
+}
 
 export function TodaysAvailability() {
   // The page is statically prerendered, so "today" must not be baked into the
@@ -25,6 +42,7 @@ export function TodaysAvailability() {
   const mounted = useIsMounted();
   const { user, initialising } = useAuth();
   const date = mounted ? todayKey() : "";
+  const now = useNow(mounted);
 
   const load = useCallback(async () => {
     // Availability is only readable when signed in; guests get a prompt
@@ -47,19 +65,43 @@ export function TodaysAvailability() {
   });
 
   return (
-    <aside className="card h-full p-5">
+    <section className="card p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-lg font-bold text-brand-900">
-          <Dumbbell className="h-5 w-5 text-brand-600" />
-          Today&rsquo;s Availability
-        </h3>
+        <div>
+          {/* Date and time take the place of a static heading, so the panel
+              always says which day and how late it is. */}
+          <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+            <CalendarDays className="h-4 w-4 text-brand-700" />
+            {date ? formatLongDate(date) : "Today"}
+          </h2>
+          {now && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-600">
+              <Clock className="h-3.5 w-3.5" />
+              <span className="tabular-nums">
+                {now.toLocaleTimeString("en-PH", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+              <span className="text-ink-400">&middot;</span>
+              <span className="text-xs text-ink-500">{OPENING_HOURS_LABEL}</span>
+            </p>
+          )}
+        </div>
+
         <ul className="flex shrink-0 flex-wrap items-center gap-3 text-[11px] font-medium text-ink-600">
-          {LEGEND.map((item) => (
-            <li key={item.label} className="flex items-center gap-1.5">
-              <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
-              {item.label}
-            </li>
-          ))}
+          <li className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-available" />
+            Available
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-booked" />
+            Booked
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-pending" />
+            Pending
+          </li>
         </ul>
       </div>
 
@@ -87,7 +129,7 @@ export function TodaysAvailability() {
               return (
                 <div
                   key={facility.id}
-                  className="flex items-center gap-2 rounded-lg bg-ink-100 px-3 py-2.5"
+                  className="flex items-center gap-2 rounded-md bg-ink-50 px-3 py-2.5"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-ink-400" />
                   <p className="text-xs text-ink-600">
@@ -100,20 +142,18 @@ export function TodaysAvailability() {
             return (
               <div key={facility.id}>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-white">
-                    <Icon className="h-4 w-4" />
-                  </span>
+                  <Icon className="h-4 w-4 text-brand-700" />
                   <p className="text-sm font-semibold text-ink-800">{facility.name}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6">
                   {TIME_BLOCKS.map((slot) =>
                     daySlots ? (
                       <SlotChip key={slot.id} label={slot.label} state={daySlots[slot.id]} />
                     ) : (
                       <div
                         key={slot.id}
-                        className={`h-9 rounded-lg bg-ink-200 ${
+                        className={`h-9 rounded-md bg-ink-100 ${
                           loading || !mounted ? "animate-pulse" : ""
                         }`}
                         aria-hidden="true"
@@ -126,6 +166,6 @@ export function TodaysAvailability() {
           })
         )}
       </div>
-    </aside>
+    </section>
   );
 }

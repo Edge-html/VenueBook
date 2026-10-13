@@ -10,7 +10,6 @@ import {
 import Link from "next/link";
 import { useCallback } from "react";
 import { AdminConsole } from "@/components/admin-console";
-import { DashboardOverview } from "@/components/dashboard-overview";
 import { useAuth } from "@/lib/auth-context";
 import { getBookingsForUser, getNotifications } from "@/lib/data";
 import { useAsyncData } from "@/lib/use-async-data";
@@ -68,7 +67,7 @@ export function HomeAccountSections() {
 }
 
 function StudentSections() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
 
   const loadCounts = useCallback(async () => {
     if (!user) return { unread: 0, pending: 0 };
@@ -97,18 +96,13 @@ function StudentSections() {
     "/notifications": unread,
   };
 
-  const firstName = (profile?.fullName ?? "").split(" ")[0] || "there";
-
   return (
-    <div className="animate-fade-up space-y-6">
-      <section className="border-t border-ink-300 pt-8">
-        <p className="text-sm font-medium text-brand-700">Welcome back, {firstName}</p>
-        <h2 className="mt-1 text-2xl font-bold text-brand-900">
-          {pending > 0
-            ? `You have ${pending} request${pending > 1 ? "s" : ""} waiting for review.`
-            : "What would you like to book today?"}
-        </h2>
-      </section>
+    <div className="animate-fade-up space-y-4">
+      {pending > 0 && (
+        <p className="rounded-md border border-pending/40 bg-pending-soft px-3 py-2 text-sm font-medium text-pending">
+          You have {pending} request{pending > 1 ? "s" : ""} waiting for review.
+        </p>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
@@ -135,8 +129,6 @@ function StudentSections() {
           </Link>
         ))}
       </section>
-
-      <DashboardOverview />
     </div>
   );
 }

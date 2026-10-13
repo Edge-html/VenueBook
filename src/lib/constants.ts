@@ -58,6 +58,9 @@ export const FACILITY_BY_ID = Object.fromEntries(
 export const OPENING_MINUTES = 7 * 60; // 07:00
 export const CLOSING_MINUTES = 19 * 60; // 19:00
 
+/** Shown next to the live clock so the hours are never a surprise. */
+export const OPENING_HOURS_LABEL = `Open ${formatHour12(OPENING_MINUTES / 60)} – ${formatHour12(CLOSING_MINUTES / 60)}`;
+
 /** Smallest bookable duration. */
 export const MIN_DURATION_MINUTES = 60;
 
