@@ -216,6 +216,7 @@ automatic single-field indexes already cover.
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase web config (optional; defaults are set) |
 
 Admin rights are **not** environment-driven — they are set on the user document
-in Firestore. Booking windows, time slots, facilities, grades and sections all
-live in `src/lib/constants.ts`. The site timezone is the browser's; adjust
-`src/lib/dates.ts` if you need to pin it to Asia/Manila.
+in Firestore. Opening hours, time blocks, facilities and grades live in
+`src/lib/constants.ts`; section is typed freely by the student. The site
+timezone is the browser's; adjust `src/lib/dates.ts` if you need to pin it to
+Asia/Manila.

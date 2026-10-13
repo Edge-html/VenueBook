@@ -89,7 +89,9 @@ export const BLOCK_BY_ID = Object.fromEntries(
 ) as Record<string, TimeBlock>;
 
 export const GRADES = ["7", "8", "9", "10", "11", "12"] as const;
-export const SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"] as const;
+
+/** Section is typed freely by the student, so there is no fixed list. */
+export const SECTION_MAX_LENGTH = 4;
 
 /** How far ahead users are allowed to book. */
 export const BOOKING_WINDOW_DAYS = 60;

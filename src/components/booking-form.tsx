@@ -23,7 +23,7 @@ import {
   GRADES,
   MIN_DURATION_MINUTES,
   OPENING_MINUTES,
-  SECTIONS,
+  SECTION_MAX_LENGTH,
   TIME_BLOCKS,
 } from "@/lib/constants";
 import {
@@ -218,7 +218,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
     if (fullName.trim().length < 3) next.fullName = "Please enter the full name.";
     if (!grade) next.grade = "Choose your grade.";
-    if (!section) next.section = "Choose your section.";
+    if (!section) next.section = "Enter your section.";
     if (!file) next.file = "Please attach a photo of your school ID.";
     if (!date) next.date = "Choose a date.";
 
@@ -578,20 +578,19 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             <label htmlFor="section" className="field-label">
               Section <span className="text-booked">*</span>
             </label>
-            <select
+            <input
               id="section"
+              type="text"
               value={section}
-              onChange={(event) => setSection(event.target.value)}
+              onChange={(event) =>
+                setSection(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+              }
+              placeholder="e.g. F"
+              autoComplete="off"
+              maxLength={SECTION_MAX_LENGTH}
               aria-invalid={Boolean(fieldErrors.section)}
               className="field"
-            >
-              <option value="">Select section</option>
-              {SECTIONS.map((value) => (
-                <option key={value} value={value}>
-                  Section {value}
-                </option>
-              ))}
-            </select>
+            />
             {fieldErrors.section && (
               <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.section}</p>
             )}
