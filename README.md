@@ -64,15 +64,22 @@ npm run lint       # eslint
 
 ### Images
 
-Drop photos into `public/images/` using these exact filenames — the site
-renders a styled placeholder for anything missing, so you can add them one at
-a time:
+**Put your photos in [`public/images/`](public/images/) using these file names:**
 
-- `knchs-building.jpg` — landing hero
-- `gymnasium.jpg` — gymnasium card
-- `avr.jpg` — AVR card
+| File                 | Where it appears           |
+| -------------------- | -------------------------- |
+| `knchs-building.jpg` | Landing page hero backdrop |
+| `gymnasium.jpg`      | Gymnasium card             |
+| `avr.jpg`            | AVR card                   |
 
-See `public/images/README.md` for recommended sizes.
+That is the whole process — no code changes. The folder is scanned when the
+site builds, so a file that isn't there is never requested (no broken-image
+errors in the console) and the bundled placeholder in
+`public/images/placeholders/` is used instead. Add them one at a time; each is
+picked up on the next deploy.
+
+Recommended sizes and formats are in
+[`public/images/README.md`](public/images/README.md).
 
 ---
 
