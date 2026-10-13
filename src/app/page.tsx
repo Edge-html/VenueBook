@@ -1,18 +1,11 @@
-import {
-  ArrowRight,
-  CalendarSearch,
-  CalendarCheck,
-  Dumbbell,
-  MapPin,
-  MonitorPlay,
-  Users,
-} from "lucide-react";
+import { ArrowRight, Dumbbell, MapPin, MonitorPlay, Users } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AvailabilitySearch } from "@/components/availability-search";
 import { HomeAccountSections } from "@/components/home-account-sections";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
+import { VisitorFeatures } from "@/components/visitor-features";
 import { FACILITIES, HERO_IMAGE } from "@/lib/constants";
 import { resolveImageSources } from "@/lib/image-sources.server";
 
@@ -59,21 +52,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Two headline features ────────────────────────────── */}
-      <section className="mx-auto mt-6 grid max-w-7xl gap-4 px-4 sm:px-6 md:grid-cols-2">
-        <FeatureCard
-          href="/book"
-          icon={CalendarCheck}
-          title="Book a Facility"
-          description="Reserve the gym or AVR for your activities, events, and special moments."
-        />
-        <FeatureCard
-          href="/availability"
-          icon={CalendarSearch}
-          title="Check Availability"
-          description="View available schedules for the gym or AVR."
-        />
-      </section>
+      {/* ── Two headline features (signed-out visitors only) ──── */}
+      <Suspense fallback={null}>
+        <VisitorFeatures />
+      </Suspense>
 
       {/* Signed-in visitors also get their four main functions here. */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -186,35 +168,5 @@ function AvailabilityPlaceholder() {
         ))}
       </div>
     </aside>
-  );
-}
-
-function FeatureCard({
-  href,
-  icon: Icon,
-  title,
-  description,
-}: {
-  href: string;
-  icon: typeof CalendarCheck;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-maroon-100 bg-maroon-50/70 p-5 transition-colors hover:bg-maroon-50"
-    >
-      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-maroon-700 text-white">
-        <Icon className="h-6 w-6" />
-      </span>
-
-      <div className="min-w-0">
-        <h3 className="font-display text-lg font-bold text-neutral-900">{title}</h3>
-        <p className="mt-1 text-sm text-neutral-600">{description}</p>
-      </div>
-
-      <ArrowRight className="ml-auto mt-3 h-5 w-5 shrink-0 text-maroon-400 transition-transform group-hover:translate-x-1" />
-    </Link>
   );
 }
