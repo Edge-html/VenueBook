@@ -55,10 +55,10 @@ export function BookingForm() {
   if (!profile) {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
-        <p className="font-display text-lg font-bold text-maroon-900">
+        <p className="text-lg font-bold text-brand-900">
           We could not load your account
         </p>
-        <p className="mt-1.5 text-sm text-neutral-600">
+        <p className="mt-1.5 text-sm text-ink-600">
           Please sign out and sign in again. If it keeps happening, an administrator needs to
           deploy the database rules.
         </p>
@@ -286,16 +286,16 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-available-soft text-available">
           <CheckCircle2 className="h-8 w-8" />
         </span>
-        <h1 className="mt-5 font-display text-2xl font-extrabold text-maroon-900">
+        <h1 className="mt-5 text-2xl font-bold text-brand-900">
           Request sent!
         </h1>
-        <p className="mt-2 text-neutral-600">
+        <p className="mt-2 text-ink-600">
           Your booking for{" "}
-          <span className="font-semibold text-neutral-900">{FACILITY_BY_ID[facilityId]?.name}</span>{" "}
-          on <span className="font-semibold text-neutral-900">{formatLongDate(date)}</span> (
+          <span className="font-semibold text-ink-900">{FACILITY_BY_ID[facilityId]?.name}</span>{" "}
+          on <span className="font-semibold text-ink-900">{formatLongDate(date)}</span> (
           {formatTimeRange(startTime, endTime)}) is now awaiting approval.
         </p>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-ink-500">
           We&rsquo;ll notify you as soon as an admin reviews it.
         </p>
 
@@ -324,8 +324,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
   return (
     <div className="animate-fade-up mx-auto max-w-3xl">
       <header className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold text-maroon-900">Book a Facility</h1>
-        <p className="mt-1.5 text-neutral-600">
+        <h1 className="text-3xl font-bold text-brand-900">Book a Facility</h1>
+        <p className="mt-1.5 text-ink-600">
           Pick a venue and an open slot, attach your school ID, then send it for approval.
         </p>
       </header>
@@ -342,28 +342,28 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               type="button"
               onClick={() => changeFacility(facility.id)}
               aria-pressed={active}
-              className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
+              className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors ${
                 active
-                  ? "border-maroon-700 bg-maroon-50"
-                  : "border-cream-300 bg-white hover:border-maroon-200"
+                  ? "border-brand-700 bg-brand-50"
+                  : "border-ink-300 bg-white hover:border-brand-200"
               }`}
             >
               <span
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
-                  active ? "bg-maroon-700 text-white" : "bg-cream-200 text-maroon-700"
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-md ${
+                  active ? "bg-brand-700 text-white" : "bg-ink-200 text-brand-700"
                 }`}
               >
                 <Icon className="h-5 w-5" />
               </span>
               <span className="min-w-0">
-                <span className="block font-display text-base font-bold text-neutral-900">
+                <span className="block text-base font-bold text-ink-900">
                   {facility.name}
                 </span>
-                <span className="block text-xs text-neutral-600">
+                <span className="block text-xs text-ink-600">
                   Capacity {facility.capacity} &middot; {facility.description}
                 </span>
               </span>
-              {active && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-maroon-700" />}
+              {active && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-brand-700" />}
             </button>
           );
         })}
@@ -393,7 +393,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               aria-invalid={Boolean(fieldErrors.date)}
               className="field w-auto"
             />
-            <p className="text-xs text-neutral-500">{formatLongDate(date)}</p>
+            <p className="text-xs text-ink-500">{formatLongDate(date)}</p>
           </div>
 
           {/* Free-form start and end, to the minute. */}
@@ -419,7 +419,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                 />
               </div>
 
-              <span className="mt-5 text-neutral-400">to</span>
+              <span className="mt-5 text-ink-400">to</span>
 
               <div>
                 <label htmlFor="endTime" className="field-label">
@@ -442,7 +442,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               </div>
             </div>
 
-            <p className="self-end pb-2 text-xs text-neutral-500 sm:pb-3">
+            <p className="self-end pb-2 text-xs text-ink-500 sm:pb-3">
               Any duration you like, from{" "}
               {formatClock(OPENING_MINUTES)} to {formatClock(CLOSING_MINUTES)}.
               {!startTime && !endTime && (
@@ -474,16 +474,16 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           )}
 
           {checking && (
-            <p className="mb-2 flex items-center gap-1.5 text-xs text-neutral-500">
+            <p className="mb-2 flex items-center gap-1.5 text-xs text-ink-500">
               <Loader2 className="h-3 w-3 animate-spin" />
               Checking that time is free…
             </p>
           )}
 
           {!activeConflict && !activeWarning && startTime && endTime && (
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-500">
               {formatTimeRange(startTime, endTime)} looks free. You can still{" "}
-              <Link href={`/availability?facility=${facilityId}&date=${date}`} className="font-semibold text-maroon-700 hover:underline">
+              <Link href={`/availability?facility=${facilityId}&date=${date}`} className="font-semibold text-brand-700 hover:underline">
                 check the full schedule
               </Link>
               .
@@ -595,7 +595,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
           <div className="sm:col-span-2">
             <label htmlFor="notes" className="field-label">
-              Notes <span className="font-normal text-neutral-500">(optional)</span>
+              Notes <span className="font-normal text-ink-500">(optional)</span>
             </label>
             <textarea
               id="notes"
@@ -615,16 +615,16 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           </span>
 
           {preview ? (
-            <div className="flex items-center gap-4 rounded-xl border border-cream-300 bg-cream-50 p-3">
+            <div className="flex items-center gap-4 rounded-md border border-ink-300 bg-ink-50 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={preview}
                 alt="Selected school ID preview"
-                className="h-20 w-32 rounded-lg border border-cream-300 object-cover"
+                className="h-20 w-32 rounded-lg border border-ink-300 object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-neutral-800">{file?.name}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="truncate text-sm font-medium text-ink-800">{file?.name}</p>
+                <p className="text-xs text-ink-500">
                   {((file?.size ?? 0) / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
@@ -632,7 +632,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                 type="button"
                 onClick={() => handleFile(null)}
                 aria-label="Remove selected photo"
-                className="grid h-8 w-8 place-items-center rounded-lg text-neutral-500 hover:bg-cream-200 hover:text-booked"
+                className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-200 hover:text-booked"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -640,13 +640,13 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           ) : (
             <label
               htmlFor="idPhoto"
-              className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-cream-300 bg-cream-50 px-4 py-7 text-center transition-colors hover:border-maroon-300 hover:bg-maroon-50/40"
+              className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-ink-300 bg-ink-50 px-4 py-7 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40"
             >
-              <ImageUp className="h-7 w-7 text-maroon-600" />
-              <span className="mt-2 text-sm font-semibold text-neutral-800">
+              <ImageUp className="h-7 w-7 text-brand-600" />
+              <span className="mt-2 text-sm font-semibold text-ink-800">
                 Tap to upload your school ID
               </span>
-              <span className="mt-0.5 text-xs text-neutral-500">
+              <span className="mt-0.5 text-xs text-ink-500">
                 JPG, PNG or WEBP &middot; max {Math.round(MAX_ID_PHOTO_BYTES / 1024)} KB
               </span>
               <input
@@ -668,7 +668,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           {photoUploadFailed && (
             <div className="mt-3 rounded-lg border border-pending/40 bg-pending-soft px-3 py-3 text-sm text-pending">
               <p className="font-medium">Your ID photo did not upload, but you can still submit.</p>
-              <p className="mt-1 text-xs font-medium text-neutral-500">
+              <p className="mt-1 text-xs font-medium text-ink-500">
                 An admin can request the photo later. If this keeps happening, ask them to
                 check your connection and try again.
               </p>
@@ -689,14 +689,14 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                 setSkipPhoto(true);
                 setError(null);
               }}
-              className="mt-2 text-xs font-semibold text-maroon-700 hover:underline"
+              className="mt-2 text-xs font-semibold text-brand-700 hover:underline"
             >
               Skip the photo and submit without it
             </button>
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-cream-200 pt-5 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 border-t border-ink-200 pt-5 sm:flex-row sm:justify-end">
           <Link href="/availability" className="btn btn-ghost">
             Check availability first
           </Link>
@@ -717,7 +717,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         </div>
       </form>
 
-      <p className="mt-4 text-center text-xs text-neutral-500">
+      <p className="mt-4 text-center text-xs text-ink-500">
         Your request stays <span className="font-semibold">Pending</span> until an admin reviews it.
       </p>
     </div>

@@ -49,11 +49,11 @@ export function TodaysAvailability() {
   return (
     <aside className="card h-full p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <h3 className="flex items-center gap-2 font-display text-lg font-bold text-maroon-900">
-          <Dumbbell className="h-5 w-5 text-maroon-600" />
+        <h3 className="flex items-center gap-2 text-lg font-bold text-brand-900">
+          <Dumbbell className="h-5 w-5 text-brand-600" />
           Today&rsquo;s Availability
         </h3>
-        <ul className="flex shrink-0 flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600">
+        <ul className="flex shrink-0 flex-wrap items-center gap-3 text-[11px] font-medium text-ink-600">
           {LEGEND.map((item) => (
             <li key={item.label} className="flex items-center gap-1.5">
               <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
@@ -67,11 +67,11 @@ export function TodaysAvailability() {
         {!initialising && !user ? (
           // Guests: bookings contain student details, so the schedule stays
           // behind sign-in. Offer the sign-in rather than a rules error.
-          <div className="rounded-xl border border-dashed border-cream-300 px-4 py-7 text-center">
-            <p className="text-sm font-semibold text-neutral-800">
+          <div className="rounded-md border border-dashed border-ink-300 px-4 py-7 text-center">
+            <p className="text-sm font-semibold text-ink-800">
               Sign in to see today&rsquo;s schedule
             </p>
-            <p className="mx-auto mt-1 max-w-xs text-xs text-neutral-500">
+            <p className="mx-auto mt-1 max-w-xs text-xs text-ink-500">
               Availability and booking details are kept private to the school.
             </p>
             <Link href="/signin" className="btn btn-primary mt-4">
@@ -87,10 +87,10 @@ export function TodaysAvailability() {
               return (
                 <div
                   key={facility.id}
-                  className="flex items-center gap-2 rounded-lg bg-cream-100 px-3 py-2.5"
+                  className="flex items-center gap-2 rounded-lg bg-ink-100 px-3 py-2.5"
                 >
-                  <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
-                  <p className="text-xs text-neutral-600">
+                  <Icon className="h-4 w-4 shrink-0 text-ink-400" />
+                  <p className="text-xs text-ink-600">
                     {describeLoadError(new Error(error), "Schedule unavailable.")}
                   </p>
                 </div>
@@ -100,10 +100,10 @@ export function TodaysAvailability() {
             return (
               <div key={facility.id}>
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-maroon-700 text-white">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-white">
                     <Icon className="h-4 w-4" />
                   </span>
-                  <p className="text-sm font-semibold text-neutral-800">{facility.name}</p>
+                  <p className="text-sm font-semibold text-ink-800">{facility.name}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -113,7 +113,7 @@ export function TodaysAvailability() {
                     ) : (
                       <div
                         key={slot.id}
-                        className={`h-9 rounded-lg bg-cream-200 ${
+                        className={`h-9 rounded-lg bg-ink-200 ${
                           loading || !mounted ? "animate-pulse" : ""
                         }`}
                         aria-hidden="true"

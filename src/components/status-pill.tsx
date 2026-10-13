@@ -4,7 +4,7 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
   pending: "bg-pending-soft text-pending",
   approved: "bg-available-soft text-available",
   rejected: "bg-booked-soft text-booked",
-  cancelled: "bg-cream-200 text-neutral-600",
+  cancelled: "bg-ink-200 text-ink-600",
 };
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
@@ -37,7 +37,7 @@ const SLOT_STYLES: Record<SlotState, string> = {
   available: "bg-available-soft text-available",
   booked: "bg-booked-soft text-booked",
   pending: "bg-pending-soft text-pending",
-  blocked: "bg-neutral-200 text-neutral-600",
+  blocked: "bg-ink-200 text-ink-600",
 };
 
 const SLOT_LABELS: Record<SlotState, string> = {
@@ -77,5 +77,5 @@ export const LEGEND: Array<{ label: string; className: string }> = [
 
 export const FULL_LEGEND: typeof LEGEND = [
   ...LEGEND,
-  { label: "Closed", className: "bg-neutral-400" },
+  { label: "Closed", className: "bg-ink-400" },
 ];

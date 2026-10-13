@@ -1,22 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Outfit } from "next/font/google";
+import { Source_Sans_3 } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { Analytics } from "@/components/analytics";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const geist = Geist({
-  variable: "--font-geist-sans",
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
   display: "swap",
-});
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -38,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7a1935",
+  themeColor: "#632136",
   width: "device-width",
   initialScale: 1,
 };
@@ -47,8 +41,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${outfit.variable}`}>
-      <body className="min-h-screen bg-cream-100 font-sans text-neutral-800 antialiased">
+    <html lang="en" className={sourceSans.variable}>
+      <body className="min-h-screen bg-ink-100 font-sans text-ink-800 antialiased">
         <AuthProvider>
           <Analytics />
           <div className="flex min-h-screen flex-col">

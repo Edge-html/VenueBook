@@ -55,12 +55,12 @@ export function SiteHeader() {
   const isHome = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-cream-300 bg-cream-50/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-ink-300 bg-ink-50/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <Logo />
-          <span className="hidden h-8 w-px bg-cream-300 lg:block" />
-          <span className="hidden font-display text-sm italic text-maroon-800/70 lg:block">
+          <span className="hidden h-8 w-px bg-ink-300 lg:block" />
+          <span className="hidden text-sm text-ink-500 lg:block">
             Your Space, Your Schedule.
           </span>
         </div>
@@ -75,8 +75,8 @@ export function SiteHeader() {
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-maroon-50 text-maroon-800"
-                    : "text-neutral-700 hover:bg-cream-200 hover:text-maroon-800"
+                    ? "bg-brand-50 text-brand-800"
+                    : "text-ink-700 hover:bg-ink-200 hover:text-brand-800"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -94,12 +94,12 @@ export function SiteHeader() {
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
-                className="flex items-center gap-2 rounded-full border border-cream-300 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:border-maroon-300"
+                className="flex items-center gap-2 rounded-full border border-ink-300 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:border-brand-300"
               >
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-maroon-700 text-xs font-bold text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">
                   {(profile?.fullName || user.email || "?").charAt(0).toUpperCase()}
                 </span>
-                <span className="max-w-28 truncate text-sm font-medium text-neutral-800">
+                <span className="max-w-28 truncate text-sm font-medium text-ink-800">
                   {profile?.fullName ?? user.email}
                 </span>
               </button>
@@ -107,16 +107,16 @@ export function SiteHeader() {
               {menuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-xl border border-cream-300 bg-white shadow-lg"
+                  className="absolute right-0 top-full mt-2 w-60 overflow-hidden rounded-md border border-ink-300 bg-white shadow-sm"
                 >
-                  <div className="border-b border-cream-200 px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-neutral-900">
+                  <div className="border-b border-ink-200 px-4 py-3">
+                    <p className="truncate text-sm font-semibold text-ink-900">
                       {profile?.fullName}
                     </p>
-                    <p className="truncate text-xs text-neutral-500">{user.email}</p>
+                    <p className="truncate text-xs text-ink-500">{user.email}</p>
                     <span
                       className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        isAdmin ? "bg-gold-200 text-gold-600" : "bg-maroon-50 text-maroon-700"
+                        isAdmin ? "bg-ink-200 text-brand-600" : "bg-brand-50 text-brand-700"
                       }`}
                     >
                       {isAdmin ? <ShieldCheck className="h-3 w-3" /> : <UserRound className="h-3 w-3" />}
@@ -128,7 +128,7 @@ export function SiteHeader() {
                     <Link
                       href="/profile"
                       role="menuitem"
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-cream-100"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-100"
                     >
                       <UserRound className="h-4 w-4" /> My profile
                     </Link>
@@ -136,7 +136,7 @@ export function SiteHeader() {
                       <Link
                         href="/admin"
                         role="menuitem"
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-700 hover:bg-cream-100"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-100"
                       >
                         <ShieldCheck className="h-4 w-4" /> Admin console
                       </Link>
@@ -169,7 +169,7 @@ export function SiteHeader() {
             onClick={() => setMobileOpen((open) => !open)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-cream-300 bg-white text-maroon-800 lg:hidden"
+            className="grid h-10 w-10 place-items-center rounded-md border border-ink-300 bg-white text-brand-800 lg:hidden"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -177,14 +177,14 @@ export function SiteHeader() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-cream-300 bg-cream-50 lg:hidden">
+        <div className="border-t border-ink-300 bg-ink-50 lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
             <Link
               href="/"
               onClick={closeMenus}
               aria-current={isHome ? "page" : undefined}
               className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                isHome ? "bg-maroon-50 text-maroon-800" : "text-neutral-700 hover:bg-cream-200"
+                isHome ? "bg-brand-50 text-brand-800" : "text-ink-700 hover:bg-ink-200"
               }`}
             >
               <LayoutDashboard className="h-4 w-4" />
@@ -197,8 +197,8 @@ export function SiteHeader() {
                 onClick={closeMenus}
                 className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
                   pathname === href
-                    ? "bg-maroon-50 text-maroon-800"
-                    : "text-neutral-700 hover:bg-cream-200"
+                    ? "bg-brand-50 text-brand-800"
+                    : "text-ink-700 hover:bg-ink-200"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -206,14 +206,14 @@ export function SiteHeader() {
               </Link>
             ))}
 
-            <div className="my-2 h-px bg-cream-300" />
+            <div className="my-2 h-px bg-ink-300" />
 
             {user ? (
               <>
                 <Link
                   href="/profile"
                   onClick={closeMenus}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-cream-200"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-200"
                 >
                   <UserRound className="h-4 w-4" /> My profile
                 </Link>
@@ -221,7 +221,7 @@ export function SiteHeader() {
                   <Link
                     href="/admin"
                     onClick={closeMenus}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-cream-200"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-200"
                   >
                     <ShieldCheck className="h-4 w-4" /> Admin console
                   </Link>

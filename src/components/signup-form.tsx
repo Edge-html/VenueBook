@@ -152,7 +152,7 @@ function SignUpFields() {
               type="button"
               onClick={() => setShowPassword((show) => !show)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-neutral-500 hover:text-maroon-700"
+              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-500 hover:text-brand-700"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -176,7 +176,7 @@ function SignUpFields() {
           {busy ? "Creating account…" : "Create Account"}
         </button>
 
-        <p className="text-center text-xs text-neutral-500">
+        <p className="text-center text-xs text-ink-500">
           Your details are used only to process venue reservations.
         </p>
       </form>
@@ -221,7 +221,7 @@ function Field({
         {...rest}
       />
       {hint && !error && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-neutral-500">
+        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-500">
           {hint}
         </p>
       )}

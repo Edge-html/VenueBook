@@ -15,7 +15,7 @@ export function VisitorFeatures() {
   if (initialising || user) return null;
 
   return (
-    <section className="mx-auto mt-6 grid max-w-7xl gap-4 px-4 sm:px-6 md:grid-cols-2">
+    <section className="mx-auto mt-6 grid max-w-7xl gap-3 px-4 sm:grid-cols-2 sm:px-6">
       <FeatureCard
         href="/book"
         icon={CalendarCheck}
@@ -46,18 +46,16 @@ function FeatureCard({
   return (
     <Link
       href={href}
-      className="group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-maroon-100 bg-maroon-50/70 p-5 transition-colors hover:bg-maroon-50"
+      className="card flex items-center gap-3 p-4 transition-colors hover:border-ink-400"
     >
-      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-maroon-700 text-white">
-        <Icon className="h-6 w-6" />
-      </span>
+      <Icon className="h-5 w-5 shrink-0 text-brand-700" />
 
       <div className="min-w-0">
-        <h3 className="font-display text-lg font-bold text-neutral-900">{title}</h3>
-        <p className="mt-1 text-sm text-neutral-600">{description}</p>
+        <h3 className="text-[0.9375rem] font-semibold text-ink-900">{title}</h3>
+        <p className="mt-0.5 text-sm text-ink-600">{description}</p>
       </div>
 
-      <ArrowRight className="ml-auto mt-3 h-5 w-5 shrink-0 text-maroon-400 transition-transform group-hover:translate-x-1" />
+      <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink-400" />
     </Link>
   );
 }

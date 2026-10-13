@@ -47,9 +47,9 @@ export function AvailabilitySearch() {
   return (
     <form
       onSubmit={submit}
-      className="flex w-full items-center gap-2 rounded-full bg-white p-1.5 pl-4 shadow-lg"
+      className="flex w-full items-center gap-2 rounded-full bg-white p-1.5 pl-4 shadow-sm"
     >
-      <Search className="h-4 w-4 shrink-0 text-maroon-600" />
+      <Search className="h-4 w-4 shrink-0 text-brand-600" />
 
       <input
         value={query}
@@ -57,7 +57,7 @@ export function AvailabilitySearch() {
         placeholder="Search venue or date…"
         aria-label="Search venue or date"
         list="venue-suggestions"
-        className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
+        className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-ink-800 outline-none placeholder:text-ink-400"
       />
 
       <button type="submit" className="btn btn-primary shrink-0">

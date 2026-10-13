@@ -226,12 +226,12 @@ export function AdminConsole() {
     <div className="animate-fade-up">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="flex items-center gap-1.5 text-sm font-medium text-gold-600">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-brand-600">
             <ShieldCheck className="h-4 w-4" />
             Administrator
           </p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold text-maroon-900">Admin Console</h1>
-          <p className="mt-1.5 text-neutral-600">
+          <h1 className="mt-1 text-3xl font-bold text-brand-900">Admin Console</h1>
+          <p className="mt-1.5 text-ink-600">
             Review student requests and control the facility schedule.
           </p>
         </div>
@@ -246,7 +246,7 @@ export function AdminConsole() {
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Awaiting review" value={pendingCount} tone="text-pending" />
         <Stat label="Approved today" value={todayCount} tone="text-available" />
-        <Stat label="Total requests" value={(bookings ?? []).length} tone="text-maroon-700" />
+        <Stat label="Total requests" value={(bookings ?? []).length} tone="text-brand-700" />
       </div>
 
       {error && (
@@ -256,7 +256,7 @@ export function AdminConsole() {
       )}
 
       {/* ── Tabs ────────────────────────────────────────────── */}
-      <div className="mb-5 inline-flex rounded-xl border border-cream-300 bg-white p-1">
+      <div className="mb-5 inline-flex rounded-md border border-ink-300 bg-white p-1">
         {(
           [
             { id: "requests" as const, label: "Booking requests" },
@@ -269,7 +269,7 @@ export function AdminConsole() {
             onClick={() => setTab(item.id)}
             aria-pressed={tab === item.id}
             className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
-              tab === item.id ? "bg-maroon-700 text-white" : "text-neutral-700 hover:bg-cream-100"
+              tab === item.id ? "bg-brand-700 text-white" : "text-ink-700 hover:bg-ink-100"
             }`}
           >
             {item.label}
@@ -288,8 +288,8 @@ export function AdminConsole() {
                 aria-pressed={statusFilter === value}
                 className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${
                   statusFilter === value
-                    ? "border-maroon-700 bg-maroon-700 text-white"
-                    : "border-cream-300 bg-white text-neutral-700 hover:bg-cream-100"
+                    ? "border-brand-700 bg-brand-700 text-white"
+                    : "border-ink-300 bg-white text-ink-700 hover:bg-ink-100"
                 }`}
               >
                 {value}
@@ -300,15 +300,15 @@ export function AdminConsole() {
           {loadingBookings && !bookings.length ? (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-32 animate-pulse rounded-2xl bg-cream-200" />
+                <div key={index} className="h-32 animate-pulse rounded-lg bg-ink-200" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="card px-6 py-14 text-center">
-              <p className="font-display text-lg font-bold text-maroon-900">
+              <p className="text-lg font-bold text-brand-900">
                 No {statusFilter === "all" ? "" : statusFilter} bookings
               </p>
-              <p className="mt-1.5 text-sm text-neutral-600">
+              <p className="mt-1.5 text-sm text-ink-600">
                 Student requests will show up here as soon as they are sent.
               </p>
             </div>
@@ -367,7 +367,7 @@ export function AdminConsole() {
             </div>
           </div>
 
-          <p className="mb-4 text-sm text-neutral-600">
+          <p className="mb-4 text-sm text-ink-600">
             Closed slots are hidden from students on the booking form and shown grey in the
             calendar.
           </p>
@@ -390,14 +390,14 @@ export function AdminConsole() {
                 <li
                   key={slot.id}
                   title={describeMinutes(slot.startMin, slot.endMin)}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-cream-50 p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-md border border-ink-200 bg-ink-50 p-3"
                 >
-                  <Icon className="h-4 w-4 shrink-0 text-maroon-700" />
-                  <span className="w-16 shrink-0 text-sm font-semibold text-neutral-800">
+                  <Icon className="h-4 w-4 shrink-0 text-brand-700" />
+                  <span className="w-16 shrink-0 text-sm font-semibold text-ink-800">
                     {slot.label}
                   </span>
 
-                  <span className="min-w-0 flex-1 text-xs text-neutral-600">
+                  <span className="min-w-0 flex-1 text-xs text-ink-600">
                     {block ? (
                       <>
                         Closed &middot; <span className="italic">{block.reason}</span>
@@ -432,7 +432,7 @@ export function AdminConsole() {
             })}
           </ul>
 
-          <p className="mt-4 flex items-center gap-1.5 text-xs text-neutral-500">
+          <p className="mt-4 flex items-center gap-1.5 text-xs text-ink-500">
             <CalendarRange className="h-3.5 w-3.5" />
             Students can book up to {BOOKING_WINDOW_DAYS} days ahead.
           </p>
@@ -442,7 +442,7 @@ export function AdminConsole() {
       {toast && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up rounded-xl bg-maroon-800 px-4 py-2.5 text-sm font-medium text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up rounded-md bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm"
         >
           {toast}
         </div>
@@ -454,8 +454,8 @@ export function AdminConsole() {
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className="card p-4">
-      <p className={`font-display text-3xl font-extrabold ${tone}`}>{value}</p>
-      <p className="mt-0.5 text-xs font-medium text-neutral-600">{label}</p>
+      <p className={`text-3xl font-bold ${tone}`}>{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-ink-600">{label}</p>
     </div>
   );
 }
@@ -492,21 +492,21 @@ function IdPhotoThumbnail({ photoId }: { photoId: string }) {
   }, [photoId]);
 
   if (missing) {
-    return <p className="mt-3 text-xs text-neutral-500">ID photo unavailable.</p>;
+    return <p className="mt-3 text-xs text-ink-500">ID photo unavailable.</p>;
   }
 
   return (
     <div className="mt-3">
-      <p className="mb-1 text-xs font-medium text-neutral-600">Student ID</p>
+      <p className="mb-1 text-xs font-medium text-ink-600">Student ID</p>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt="Uploaded student ID"
-          className="h-28 w-44 rounded-lg border border-cream-300 object-cover"
+          className="h-28 w-44 rounded-lg border border-ink-300 object-cover"
         />
       ) : (
-        <div className="h-28 w-44 animate-pulse rounded-lg bg-cream-200" />
+        <div className="h-28 w-44 animate-pulse rounded-lg bg-ink-200" />
       )}
     </div>
   );
@@ -539,42 +539,42 @@ function AdminBookingCard({
   return (
     <li className="card p-5">
       <div className="flex flex-wrap items-start gap-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-maroon-700 text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-brand-700 text-white">
           <Icon className="h-6 w-6" />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-base font-bold text-neutral-900">
+            <h3 className="text-base font-bold text-ink-900">
               {booking.fullName}
             </h3>
             <StatusPill status={booking.status} size="sm" />
           </div>
 
-          <p className="mt-0.5 text-sm text-neutral-700">
+          <p className="mt-0.5 text-sm text-ink-700">
             Grade {booking.grade}-{booking.section} &middot; {facility?.name} &middot;{" "}
             {formatLongDate(booking.date)} &middot; {range}
           </p>
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
-              <dt className="text-neutral-500">Purpose</dt>
-              <dd className="font-medium text-neutral-800">{booking.purpose}</dd>
+              <dt className="text-ink-500">Purpose</dt>
+              <dd className="font-medium text-ink-800">{booking.purpose}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-neutral-500">Attendees</dt>
-              <dd className="font-medium text-neutral-800">{booking.attendees}</dd>
+              <dt className="text-ink-500">Attendees</dt>
+              <dd className="font-medium text-ink-800">{booking.attendees}</dd>
             </div>
             {booking.notes && (
               <div className="flex gap-2 sm:col-span-2">
-                <dt className="text-neutral-500">Notes</dt>
-                <dd className="font-medium text-neutral-800">{booking.notes}</dd>
+                <dt className="text-ink-500">Notes</dt>
+                <dd className="font-medium text-ink-800">{booking.notes}</dd>
               </div>
             )}
             {booking.reviewedBy && (
               <div className="flex gap-2 sm:col-span-2">
-                <dt className="text-neutral-500">Reviewed by</dt>
-                <dd className="font-medium text-neutral-800">{booking.reviewedBy}</dd>
+                <dt className="text-ink-500">Reviewed by</dt>
+                <dd className="font-medium text-ink-800">{booking.reviewedBy}</dd>
               </div>
             )}
           </dl>
@@ -584,9 +584,9 @@ function AdminBookingCard({
           )}
 
           {pending && (
-            <div className="mt-4 border-t border-cream-200 pt-4">
+            <div className="mt-4 border-t border-ink-200 pt-4">
               <label htmlFor={`note-${booking.id}`} className="field-label">
-                Note to the student <span className="font-normal text-neutral-500">(optional)</span>
+                Note to the student <span className="font-normal text-ink-500">(optional)</span>
               </label>
               <input
                 id={`note-${booking.id}`}
@@ -600,7 +600,7 @@ function AdminBookingCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-cream-200 pt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-200 pt-4">
         {pending ? (
           <>
             <button type="button" onClick={onApprove} disabled={busy} className="btn btn-primary">
@@ -629,7 +629,7 @@ function AdminBookingCard({
           type="button"
           onClick={onRemove}
           disabled={busy}
-          className="btn btn-ghost ml-auto text-neutral-500 hover:bg-cream-100 hover:text-booked"
+          className="btn btn-ghost ml-auto text-ink-500 hover:bg-ink-100 hover:text-booked"
         >
           <Trash2 className="h-4 w-4" />
           Delete

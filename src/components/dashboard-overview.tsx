@@ -37,11 +37,11 @@ export function DashboardOverview() {
   return (
     <section className="card p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-display text-lg font-bold text-maroon-900">
-          <CalendarDays className="h-5 w-5 text-maroon-600" />
+        <h2 className="flex items-center gap-2 text-lg font-bold text-brand-900">
+          <CalendarDays className="h-5 w-5 text-brand-600" />
           Upcoming reservations
         </h2>
-        <Link href="/reservations" className="text-sm font-semibold text-maroon-700 hover:underline">
+        <Link href="/reservations" className="text-sm font-semibold text-brand-700 hover:underline">
           View all
         </Link>
       </div>
@@ -49,12 +49,12 @@ export function DashboardOverview() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-16 animate-pulse rounded-xl bg-cream-200" />
+            <div key={index} className="h-16 animate-pulse rounded-md bg-ink-200" />
           ))}
         </div>
       ) : upcoming.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-cream-300 px-4 py-8 text-center">
-          <p className="text-sm font-medium text-neutral-700">No upcoming reservations.</p>
+        <div className="rounded-md border border-dashed border-ink-300 px-4 py-8 text-center">
+          <p className="text-sm font-medium text-ink-700">No upcoming reservations.</p>
           <Link href="/book" className="btn btn-outline mt-4">
             Book a facility
           </Link>
@@ -69,17 +69,17 @@ export function DashboardOverview() {
             return (
               <li
                 key={booking.id}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-cream-50 p-3"
+                className="flex flex-wrap items-center gap-3 rounded-md border border-ink-200 bg-ink-50 p-3"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-maroon-700 text-white">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-700 text-white">
                   <Icon className="h-5 w-5" />
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-neutral-900">
+                  <p className="truncate text-sm font-semibold text-ink-900">
                     {facility?.name ?? booking.facilityId}
                   </p>
-                  <p className="text-xs text-neutral-600">
+                  <p className="text-xs text-ink-600">
                     {formatShortDate(booking.date)} &middot; {range}
                   </p>
                 </div>

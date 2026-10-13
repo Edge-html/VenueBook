@@ -27,7 +27,7 @@ export const FACILITIES: Facility[] = [
     description: "Sports, school activities, and events.",
     image: "/images/gymnasium.jpg",
     placeholder: "/images/placeholders/gymnasium.svg",
-    tone: "text-maroon-700",
+    tone: "text-brand-700",
   },
   {
     id: "avr",
@@ -37,7 +37,7 @@ export const FACILITIES: Facility[] = [
     description: "Meetings, seminars, and presentations.",
     image: "/images/avr.jpg",
     placeholder: "/images/placeholders/avr.svg",
-    tone: "text-maroon-700",
+    tone: "text-brand-700",
   },
 ];
 

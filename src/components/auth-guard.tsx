@@ -47,8 +47,8 @@ export function RequireAuth({
 export function FullPageLoader({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-      <span className="h-8 w-8 animate-spin rounded-full border-3 border-cream-300 border-t-maroon-700" />
-      <p className="text-sm text-neutral-500">{label}</p>
+      <span className="h-8 w-8 animate-spin rounded-full border-3 border-ink-300 border-t-brand-700" />
+      <p className="text-sm text-ink-500">{label}</p>
     </div>
   );
 }

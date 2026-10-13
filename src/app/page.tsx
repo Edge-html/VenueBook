@@ -19,7 +19,7 @@ export default function LandingPage() {
     <>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl bg-maroon-800 shadow-xl">
+        <div className="relative overflow-hidden rounded-lg bg-brand-800 shadow-sm">
           <div className="absolute inset-0">
             <SmartImage
               sources={resolveImageSources(HERO_IMAGE.photo, HERO_IMAGE.placeholder)}
@@ -27,21 +27,19 @@ export default function LandingPage() {
               loading="eager"
               className="h-full w-full object-cover object-right opacity-70"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-maroon-950 via-maroon-900/90 to-maroon-800/40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-900 via-brand-900/90 to-brand-800/40" />
           </div>
 
           <div className="relative max-w-2xl px-6 py-12 sm:px-10 lg:py-16">
-            <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur">
-              VenueBook
+            <span className="inline-flex items-center rounded bg-white/15 px-2 py-0.5 text-xs font-semibold tracking-wide text-white backdrop-blur">
+              KNCHS
             </span>
 
-            <h1 className="mt-5 font-display text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-6xl">
-              Your Space,
-              <br />
-              <span className="italic">Your Schedule.</span>
+            <h1 className="mt-4 text-3xl font-bold leading-tight text-white sm:text-4xl">
+              Your Space, Your Schedule.
             </h1>
 
-            <p className="mt-4 max-w-md text-base text-maroon-100">
+            <p className="mt-4 max-w-md text-base text-brand-100">
               Book the KNCHS Gymnasium or AVR with ease.
             </p>
 
@@ -67,8 +65,8 @@ export default function LandingPage() {
       {/* ── Facilities + today's availability ────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="mb-5 flex items-center gap-3">
-          <h2 className="font-display text-2xl font-extrabold text-maroon-900">Our Facilities</h2>
-          <span className="h-px w-12 bg-gold-400" />
+          <h2 className="section-title">Our Facilities</h2>
+          <span className="h-px flex-1 bg-ink-200" />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
@@ -77,39 +75,30 @@ export default function LandingPage() {
 
             return (
               <article key={facility.id} className="card overflow-hidden">
-                <div className="h-44 w-full overflow-hidden bg-gradient-to-br from-maroon-800 to-maroon-950">
+                <div className="h-40 w-full overflow-hidden bg-ink-200">
                   <SmartImage
                     sources={resolveImageSources(facility.image, facility.placeholder)}
                     alt={facility.name}
                     className="h-full w-full object-cover"
                   >
-                    <div className="grid h-full w-full place-items-center text-white/25">
-                      <Icon className="h-14 w-14" />
+                    <div className="grid h-full w-full place-items-center">
+                      <Icon className="h-10 w-10 text-ink-400" />
                     </div>
                   </SmartImage>
                 </div>
 
-                <div className="p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-maroon-700 text-white">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="font-display text-lg font-bold text-neutral-900">
-                        {facility.name}
-                      </h3>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-neutral-600">
-                        <Users className="h-3.5 w-3.5" />
-                        Capacity: {facility.capacity}
-                      </p>
-                    </div>
-                  </div>
+                <div className="card-pad">
+                  <h3 className="text-base font-semibold text-ink-900">{facility.name}</h3>
 
-                  <p className="mt-3 text-sm text-neutral-600">{facility.description}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-600">
+                    <Users className="h-3.5 w-3.5" />
+                    Capacity {facility.capacity}
+                  </p>
+                  <p className="mt-2 text-sm text-ink-600">{facility.description}</p>
 
                   <Link
                     href={`/availability?facility=${facility.id}`}
-                    className="btn btn-primary mt-4 w-full"
+                    className="btn btn-outline mt-4 w-full"
                   >
                     View Schedule
                     <ArrowRight className="h-4 w-4" />
@@ -127,13 +116,13 @@ export default function LandingPage() {
 
       {/* ── Closing call to action ────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6">
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-cream-300 bg-white px-6 py-9 text-center sm:flex-row sm:justify-between sm:text-left">
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-ink-200 bg-white px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="flex items-center justify-center gap-2 font-display text-xl font-extrabold text-maroon-900 sm:justify-start">
-              <MapPin className="h-5 w-5 text-maroon-600" />
+            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+              <MapPin className="h-4 w-4 text-brand-700" />
               Ready to reserve a space?
             </h2>
-            <p className="mt-1 text-sm text-neutral-600">
+            <p className="mt-1 text-sm text-ink-600">
               Create an account and send your request in under a minute.
             </p>
           </div>
@@ -154,14 +143,14 @@ export default function LandingPage() {
 function AvailabilityPlaceholder() {
   return (
     <aside className="card h-full p-5" aria-hidden="true">
-      <h3 className="mb-4 h-6 w-48 animate-pulse rounded-lg bg-cream-200" />
+      <h3 className="mb-4 h-6 w-48 animate-pulse rounded-lg bg-ink-200" />
       <div className="space-y-5">
         {Array.from({ length: 2 }).map((_, row) => (
           <div key={row}>
-            <div className="mb-2 h-7 w-40 animate-pulse rounded-lg bg-cream-200" />
+            <div className="mb-2 h-7 w-40 animate-pulse rounded-lg bg-ink-200" />
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {Array.from({ length: 6 }).map((__, cell) => (
-                <div key={cell} className="h-9 animate-pulse rounded-lg bg-cream-200" />
+                <div key={cell} className="h-9 animate-pulse rounded-lg bg-ink-200" />
               ))}
             </div>
           </div>

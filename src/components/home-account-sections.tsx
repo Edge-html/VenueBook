@@ -58,7 +58,7 @@ export function HomeAccountSections() {
 
   if (isAdmin) {
     return (
-      <div className="border-t border-cream-300 pt-8">
+      <div className="border-t border-ink-300 pt-8">
         <AdminConsole />
       </div>
     );
@@ -101,39 +101,37 @@ function StudentSections() {
 
   return (
     <div className="animate-fade-up space-y-6">
-      <section className="border-t border-cream-300 pt-8">
-        <p className="text-sm font-medium text-maroon-700">Welcome back, {firstName}</p>
-        <h2 className="mt-1 font-display text-2xl font-extrabold text-maroon-900">
+      <section className="border-t border-ink-300 pt-8">
+        <p className="text-sm font-medium text-brand-700">Welcome back, {firstName}</p>
+        <h2 className="mt-1 text-2xl font-bold text-brand-900">
           {pending > 0
             ? `You have ${pending} request${pending > 1 ? "s" : ""} waiting for review.`
             : "What would you like to book today?"}
         </h2>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-3 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
           <Link
             key={href}
             href={href}
-            className="group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-cream-300 bg-white p-5 transition-shadow hover:shadow-md"
+            className="card flex items-center gap-3 p-4 transition-colors hover:border-ink-400"
           >
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-maroon-700 text-white">
-              <Icon className="h-6 w-6" />
-            </span>
+            <Icon className="h-5 w-5 shrink-0 text-brand-700" />
 
             <div className="min-w-0">
-              <h3 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900">
+              <h3 className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
                 {title}
                 {badges[href] > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-booked px-1.5 text-[11px] font-bold text-white">
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-700 px-1.5 text-[11px] font-bold text-white">
                     {badges[href]}
                   </span>
                 )}
               </h3>
-              <p className="mt-1 text-sm text-neutral-600">{description}</p>
+              <p className="mt-0.5 text-sm text-ink-600">{description}</p>
             </div>
 
-            <ArrowRight className="ml-auto mt-3 h-5 w-5 shrink-0 text-maroon-400 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink-400" />
           </Link>
         ))}
       </section>

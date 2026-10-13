@@ -35,8 +35,8 @@ export function Logo({
     >
       <Crest className="h-10 w-10 shrink-0" />
       <span
-        className={`font-display text-lg font-extrabold leading-none tracking-tight ${
-          light ? "text-white" : "text-maroon-800"
+        className={`text-lg font-bold leading-none tracking-tight ${
+          light ? "text-white" : "text-brand-800"
         }`}
       >
         VenueBook

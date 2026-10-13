@@ -122,7 +122,7 @@ function SignInFields() {
               type="button"
               onClick={handleReset}
               disabled={resetting || busy}
-              className="text-xs font-semibold text-maroon-700 hover:underline disabled:opacity-50"
+              className="text-xs font-semibold text-brand-700 hover:underline disabled:opacity-50"
             >
               {resetting ? "Sending…" : "Forgot password?"}
             </button>
@@ -144,7 +144,7 @@ function SignInFields() {
               type="button"
               onClick={() => setShowPassword((show) => !show)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-neutral-500 hover:text-maroon-700"
+              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-500 hover:text-brand-700"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

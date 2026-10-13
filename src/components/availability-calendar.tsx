@@ -28,7 +28,7 @@ const SEGMENT_STYLES: Record<SlotState, string> = {
   available: "bg-available",
   booked: "bg-booked",
   pending: "bg-pending",
-  blocked: "bg-neutral-300",
+  blocked: "bg-ink-300",
 };
 
 export function AvailabilityCalendar() {
@@ -97,10 +97,10 @@ export function AvailabilityCalendar() {
     <div className="animate-fade-up">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-maroon-900">
+          <h1 className="text-3xl font-bold text-brand-900">
             Check Availability
           </h1>
-          <p className="mt-1.5 text-neutral-600">
+          <p className="mt-1.5 text-ink-600">
             Green is free to book, red is taken, amber is awaiting approval.
           </p>
         </div>
@@ -110,12 +110,12 @@ export function AvailabilityCalendar() {
             type="button"
             onClick={reload}
             aria-label="Refresh schedule"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-cream-300 bg-white text-maroon-700"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 bg-white text-brand-700"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
 
-          <ul className="flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-600">
+          <ul className="flex flex-wrap items-center gap-4 text-xs font-medium text-ink-600">
             {FULL_LEGEND.map((item) => (
               <li key={item.label} className="flex items-center gap-1.5">
                 <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
@@ -127,7 +127,7 @@ export function AvailabilityCalendar() {
       </header>
 
       {/* ── Facility switch ─────────────────────────────────── */}
-      <div className="mb-5 inline-flex rounded-xl border border-cream-300 bg-white p-1">
+      <div className="mb-5 inline-flex rounded-md border border-ink-300 bg-white p-1">
         {FACILITIES.map((option) => {
           const Icon = ICONS[option.id];
           const active = option.id === facilityId;
@@ -139,7 +139,7 @@ export function AvailabilityCalendar() {
               onClick={() => setFacilityId(option.id)}
               aria-pressed={active}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                active ? "bg-maroon-700 text-white" : "text-neutral-700 hover:bg-cream-100"
+                active ? "bg-brand-700 text-white" : "text-ink-700 hover:bg-ink-100"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -158,12 +158,12 @@ export function AvailabilityCalendar() {
               onClick={() => shiftMonth(-1)}
               disabled={!canGoBack}
               aria-label="Previous month"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-cream-300 text-maroon-700 disabled:opacity-35"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 text-brand-700 disabled:opacity-35"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <h2 className="font-display text-lg font-bold text-maroon-900">
+            <h2 className="text-lg font-bold text-brand-900">
               {formatMonthTitle(month)}
             </h2>
 
@@ -172,7 +172,7 @@ export function AvailabilityCalendar() {
               onClick={() => shiftMonth(1)}
               disabled={!canGoForward}
               aria-label="Next month"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-cream-300 text-maroon-700 disabled:opacity-35"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 text-brand-700 disabled:opacity-35"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -182,7 +182,7 @@ export function AvailabilityCalendar() {
             {WEEKDAY_SHORT.map((day) => (
               <div
                 key={day}
-                className="pb-1 text-[11px] font-bold uppercase tracking-wide text-neutral-400"
+                className="pb-1 text-[11px] font-bold uppercase tracking-wide text-ink-400"
               >
                 {day.charAt(0)}
               </div>
@@ -205,9 +205,9 @@ export function AvailabilityCalendar() {
                   aria-label={formatLongDate(key)}
                   className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors ${
                     isSelected
-                      ? "bg-maroon-700 text-white"
+                      ? "bg-brand-700 text-white"
                       : bookable
-                        ? "hover:bg-maroon-50"
+                        ? "hover:bg-brand-50"
                         : "cursor-default opacity-40"
                   }`}
                 >
@@ -216,8 +216,8 @@ export function AvailabilityCalendar() {
                       inMonth
                         ? isSelected
                           ? "text-white"
-                          : "text-neutral-800"
-                        : "text-neutral-400"
+                          : "text-ink-800"
+                        : "text-ink-400"
                     }`}
                   >
                     {day.getDate()}
@@ -226,7 +226,7 @@ export function AvailabilityCalendar() {
                   <span className="flex h-1.5 w-full gap-px overflow-hidden rounded-full">
                     {loading
                       ? Array.from({ length: 6 }).map((_, i) => (
-                          <span key={i} className="h-full flex-1 bg-cream-300" />
+                          <span key={i} className="h-full flex-1 bg-ink-300" />
                         ))
                       : slots
                         ? TIME_BLOCKS.map((slot) => (
@@ -240,7 +240,7 @@ export function AvailabilityCalendar() {
                             />
                           ))
                         : Array.from({ length: 6 }).map((_, i) => (
-                            <span key={i} className="h-full flex-1 bg-cream-200" />
+                            <span key={i} className="h-full flex-1 bg-ink-200" />
                           ))}
                   </span>
                 </button>
@@ -248,7 +248,7 @@ export function AvailabilityCalendar() {
             })}
           </div>
 
-          <p className="mt-3 text-center text-xs text-neutral-500">
+          <p className="mt-3 text-center text-xs text-ink-500">
             Each bar is one hour. Only the next {BOOKING_WINDOW_DAYS} days can be booked.
           </p>
         </section>
@@ -256,14 +256,14 @@ export function AvailabilityCalendar() {
         {/* ── Selected day ─────────────────────────────────── */}
         <section className="card h-fit p-5">
           <div className="mb-4 flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-maroon-700 text-white">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-700 text-white">
               <SelectedIcon className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="font-display text-lg font-bold text-neutral-900">
+              <h2 className="text-lg font-bold text-ink-900">
                 {facility.name}
               </h2>
-              <p className="text-xs text-neutral-600">{formatLongDate(selected)}</p>
+              <p className="text-xs text-ink-600">{formatLongDate(selected)}</p>
             </div>
           </div>
 
@@ -278,7 +278,7 @@ export function AvailabilityCalendar() {
               {TIME_BLOCKS.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex h-10 items-center gap-3 rounded-lg bg-cream-200 px-3 text-xs font-medium text-neutral-400"
+                  className="flex h-10 items-center gap-3 rounded-lg bg-ink-200 px-3 text-xs font-medium text-ink-400"
                 >
                   <span className="w-24 shrink-0">{slot.label}</span>
                   <span>Unavailable</span>
@@ -289,7 +289,7 @@ export function AvailabilityCalendar() {
             <div className="space-y-2">
               {TIME_BLOCKS.map((slot) =>
                 loading || !selectedSlots ? (
-                  <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-cream-200" />
+                  <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-ink-200" />
                 ) : (
                   <div key={slot.id} className="flex items-center gap-3">
                     <SlotChip
@@ -298,7 +298,7 @@ export function AvailabilityCalendar() {
                       title={describeMinutes(slot.startMin, slot.endMin)}
                       className="w-24 shrink-0"
                     />
-                    <p className="text-xs text-neutral-600">
+                    <p className="text-xs text-ink-600">
                       {selectedSlots[slot.id] === "available"
                         ? "Open — book it now"
                         : selectedSlots[slot.id] === "booked"

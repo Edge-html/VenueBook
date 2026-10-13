@@ -62,10 +62,10 @@ export function ReservationsList() {
     <div className="animate-fade-up">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-maroon-900">
+          <h1 className="text-3xl font-bold text-brand-900">
             My Reservations
           </h1>
-          <p className="mt-1.5 text-neutral-600">
+          <p className="mt-1.5 text-ink-600">
             Every request you have sent, and where it stands.
           </p>
         </div>
@@ -75,7 +75,7 @@ export function ReservationsList() {
             type="button"
             onClick={reload}
             aria-label="Refresh reservations"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-cream-300 bg-white text-maroon-700"
+            className="grid h-10 w-10 place-items-center rounded-md border border-ink-300 bg-white text-brand-700"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -92,7 +92,7 @@ export function ReservationsList() {
         </p>
       )}
 
-      <div className="mb-5 inline-flex rounded-xl border border-cream-300 bg-white p-1">
+      <div className="mb-5 inline-flex rounded-md border border-ink-300 bg-white p-1">
         {(["upcoming", "past", "all"] as const).map((value) => (
           <button
             key={value}
@@ -100,7 +100,7 @@ export function ReservationsList() {
             onClick={() => setFilter(value)}
             aria-pressed={filter === value}
             className={`rounded-lg px-4 py-1.5 text-sm font-semibold capitalize transition-colors ${
-              filter === value ? "bg-maroon-700 text-white" : "text-neutral-700 hover:bg-cream-100"
+              filter === value ? "bg-brand-700 text-white" : "text-ink-700 hover:bg-ink-100"
             }`}
           >
             {value}
@@ -111,15 +111,15 @@ export function ReservationsList() {
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-28 animate-pulse rounded-2xl bg-cream-200" />
+            <div key={index} className="h-28 animate-pulse rounded-lg bg-ink-200" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="card px-6 py-14 text-center">
-          <p className="font-display text-lg font-bold text-maroon-900">
+          <p className="text-lg font-bold text-brand-900">
             Nothing here yet
           </p>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm text-neutral-600">
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-600">
             {filter === "upcoming"
               ? "You have no upcoming reservations. Book the gym or AVR to get started."
               : filter === "past"
@@ -166,47 +166,47 @@ function ReservationCard({
   return (
     <li className="card p-5">
       <div className="flex flex-wrap items-start gap-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-maroon-700 text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-brand-700 text-white">
           <Icon className="h-6 w-6" />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-bold text-ink-900">
               {facility?.name ?? booking.facilityId}
             </h2>
             <StatusPill status={booking.status} size="sm" />
           </div>
 
-          <p className="mt-1 text-sm text-neutral-700">
+          <p className="mt-1 text-sm text-ink-700">
             {formatLongDate(booking.date)} &middot; {range}
           </p>
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
-              <dt className="text-neutral-500">Booked by</dt>
-              <dd className="font-medium text-neutral-800">
+              <dt className="text-ink-500">Booked by</dt>
+              <dd className="font-medium text-ink-800">
                 {booking.fullName} &middot; Grade {booking.grade}-{booking.section}
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-neutral-500">Purpose</dt>
-              <dd className="font-medium text-neutral-800">{booking.purpose}</dd>
+              <dt className="text-ink-500">Purpose</dt>
+              <dd className="font-medium text-ink-800">{booking.purpose}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-neutral-500">Attendees</dt>
-              <dd className="font-medium text-neutral-800">{booking.attendees}</dd>
+              <dt className="text-ink-500">Attendees</dt>
+              <dd className="font-medium text-ink-800">{booking.attendees}</dd>
             </div>
             {booking.adminNote && (
               <div className="flex gap-2">
-                <dt className="text-neutral-500">Admin note</dt>
-                <dd className="font-medium text-neutral-800">{booking.adminNote}</dd>
+                <dt className="text-ink-500">Admin note</dt>
+                <dd className="font-medium text-ink-800">{booking.adminNote}</dd>
               </div>
             )}
           </dl>
 
           {booking.notes && (
-            <p className="mt-2 rounded-lg bg-cream-100 px-3 py-2 text-sm text-neutral-700">
+            <p className="mt-2 rounded-lg bg-ink-100 px-3 py-2 text-sm text-ink-700">
               {booking.notes}
             </p>
           )}
