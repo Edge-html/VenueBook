@@ -39,7 +39,7 @@ export default function LandingPage() {
 
           <div className="relative max-w-2xl px-6 py-12 sm:px-10 lg:py-16">
             <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur">
-              KNCHS VenueBook
+              VenueBook
             </span>
 
             <h1 className="mt-5 font-display text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-6xl">

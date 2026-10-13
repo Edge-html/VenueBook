@@ -5,7 +5,7 @@ import { RequireAuth } from "@/components/auth-guard";
 export const metadata: Metadata = {
   title: {
     default: "VenueBook",
-    template: "%s · KNCHS VenueBook",
+    template: "%s · VenueBook",
   },
 };
 

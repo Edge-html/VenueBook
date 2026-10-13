@@ -3,7 +3,7 @@ import { ProfileCard } from "@/components/profile-card";
 
 export const metadata: Metadata = {
   title: "My Profile",
-  description: "Manage your KNCHS VenueBook account details.",
+  description: "Manage your VenueBook account details.",
 };
 
 export default function ProfilePage() {

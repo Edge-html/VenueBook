@@ -5,11 +5,19 @@ below. That is all you need to do — no code changes.
 
 ```
 public/images/
+├── knchs-logo.png        ← your original logo (kept as-is)
+├── knchs-logo-256.png    ← resized copy the site actually loads
 ├── knchs-building.jpg    ← landing page hero background
 ├── gymnasium.jpg         ← Gymnasium card
 ├── avr.jpg               ← AVR card
 └── placeholders/         ← do not touch, used until you add the real files
 ```
+
+Your `knchs-logo.png` is the main logo in the header and footer, and the
+browser tab icon. It is used at 40–48 px, so the site loads a 256 px copy
+(`knchs-logo-256.png`, 124 KB instead of 428 KB) for speed. **You only need to
+re-run that resize if you replace the logo with a different image** — otherwise
+just edit `src/components/logo.tsx` to point at your new file.
 
 The site checks this folder when it builds, so a file that isn't here is never
 requested (no broken-image icons in the console) and `placeholders/` is shown

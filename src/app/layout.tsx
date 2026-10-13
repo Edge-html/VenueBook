@@ -21,19 +21,19 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "KNCHS VenueBook — Book the Gymnasium & AVR",
-    template: "%s · KNCHS VenueBook",
+    default: "VenueBook — Book the KNCHS Gymnasium & AVR",
+    template: "%s · VenueBook",
   },
   description:
     "Reserve the KNCHS Gymnasium or AVR in seconds. Check live availability, send your request for approval, and track every reservation in one place.",
-  applicationName: "KNCHS VenueBook",
+  applicationName: "VenueBook",
   keywords: ["KNCHS", "VenueBook", "gymnasium booking", "AVR reservation", "Koronadal"],
-  authors: [{ name: "KNCHS VenueBook" }],
+  authors: [{ name: "VenueBook" }],
   openGraph: {
-    title: "KNCHS VenueBook",
+    title: "VenueBook",
     description: "Your Space, Your Schedule. Book the KNCHS Gymnasium or AVR with ease.",
     type: "website",
-    siteName: "KNCHS VenueBook",
+    siteName: "VenueBook",
   },
 };
 

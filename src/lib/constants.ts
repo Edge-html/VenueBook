@@ -1,6 +1,6 @@
 import type { FacilityId } from "./types";
 
-export const APP_NAME = "KNCHS VenueBook";
+export const APP_NAME = "VenueBook";
 export const SCHOOL_NAME = "Koronadal National Comprehensive High School";
 
 export interface Facility {

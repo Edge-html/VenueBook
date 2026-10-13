@@ -4,7 +4,7 @@ import { SignInForm } from "@/components/signin-form";
 
 export const metadata: Metadata = {
   title: "Sign In",
-  description: "Sign in to KNCHS VenueBook to reserve the gymnasium or AVR.",
+  description: "Sign in to VenueBook to reserve the gymnasium or AVR.",
 };
 
 export default function SignInPage() {
