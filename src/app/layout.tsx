@@ -21,7 +21,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "VenueBook — Book the KNCHS Gymnasium & AVR",
+    default: "VenueBook",
     template: "%s · VenueBook",
   },
   description:
