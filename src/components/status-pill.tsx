@@ -51,14 +51,17 @@ export function SlotChip({
   state,
   label,
   className = "",
+  title,
 }: {
   state: SlotState;
   label: string;
   className?: string;
+  /** Overrides the state tooltip, e.g. with the hour's full range. */
+  title?: string;
 }) {
   return (
     <span
-      title={SLOT_LABELS[state]}
+      title={title ?? SLOT_LABELS[state]}
       className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold ${SLOT_STYLES[state]} ${className}`}
     >
       {label}

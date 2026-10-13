@@ -27,8 +27,12 @@ export function fromMinutes(total: number): string {
 /** 7 → "7 AM", 12 → "12 PM", 13 → "1 PM" */
 export function formatHour12(hour: number): string {
   const suffix = hour >= 12 ? "PM" : "AM";
-  const display = hour % 12 === 0 ? 12 : hour % 12;
-  return `${display} ${suffix}`;
+  return `${hourNumber(hour)} ${suffix}`;
+}
+
+/** 7 → "7", 12 → "12", 13 → "1", 18 → "6" */
+export function hourNumber(hour: number): string {
+  return `${hour % 12 === 0 ? 12 : hour % 12}`;
 }
 
 /** "09:00" for a 24-hour clock hour. */
@@ -39,6 +43,11 @@ export function hourLabel(hour: number): string {
 /** Half-open overlap: touching ranges (end === start) do NOT overlap. */
 export function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
+}
+
+/** Minutes since midnight → "9 AM – 10 AM". Used for tooltips and confirmations. */
+export function describeMinutes(startMin: number, endMin: number): string {
+  return `${formatClock(startMin)} – ${formatClock(endMin)}`;
 }
 
 /** 570 → "9:30 AM" */

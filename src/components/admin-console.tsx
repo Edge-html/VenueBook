@@ -27,7 +27,7 @@ import {
 } from "@/lib/data";
 import { formatLongDate, formatShortDate, todayKey } from "@/lib/dates";
 import { BOOKING_WINDOW_DAYS, FACILITIES, FACILITY_BY_ID, TIME_BLOCKS } from "@/lib/constants";
-import { formatTimeRange } from "@/lib/time";
+import { formatTimeRange, describeMinutes } from "@/lib/time";
 import type { BlockedSlot, Booking, BookingStatus, FacilityId } from "@/lib/types";
 import { useAsyncData } from "@/lib/use-async-data";
 
@@ -389,10 +389,11 @@ export function AdminConsole() {
               return (
                 <li
                   key={slot.id}
+                  title={describeMinutes(slot.startMin, slot.endMin)}
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-cream-50 p-3"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-maroon-700" />
-                  <span className="w-24 shrink-0 text-sm font-semibold text-neutral-800">
+                  <span className="w-12 shrink-0 text-sm font-semibold text-neutral-800">
                     {slot.label}
                   </span>
 

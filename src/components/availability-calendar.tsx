@@ -18,6 +18,7 @@ import {
 } from "@/lib/dates";
 import type { FacilityId, SlotState } from "@/lib/types";
 import { describeLoadError } from "@/lib/load-errors";
+import { describeMinutes } from "@/lib/time";
 import { useAsyncData } from "@/lib/use-async-data";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
@@ -279,7 +280,7 @@ export function AvailabilityCalendar() {
                   key={slot.id}
                   className="flex h-10 items-center gap-3 rounded-lg bg-cream-200 px-3 text-xs font-medium text-neutral-400"
                 >
-                  <span className="w-28 shrink-0">{slot.label}</span>
+                  <span className="w-24 shrink-0">{slot.label}</span>
                   <span>Unavailable</span>
                 </div>
               ))}
@@ -294,7 +295,8 @@ export function AvailabilityCalendar() {
                     <SlotChip
                       label={slot.label}
                       state={selectedSlots[slot.id] ?? "available"}
-                      className="w-28 shrink-0"
+                      title={describeMinutes(slot.startMin, slot.endMin)}
+                      className="w-24 shrink-0"
                     />
                     <p className="text-xs text-neutral-600">
                       {selectedSlots[slot.id] === "available"
