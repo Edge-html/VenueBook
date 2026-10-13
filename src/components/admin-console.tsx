@@ -393,7 +393,7 @@ export function AdminConsole() {
                   className="flex flex-wrap items-center gap-3 rounded-xl border border-cream-200 bg-cream-50 p-3"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-maroon-700" />
-                  <span className="w-12 shrink-0 text-sm font-semibold text-neutral-800">
+                  <span className="w-16 shrink-0 text-sm font-semibold text-neutral-800">
                     {slot.label}
                   </span>
 

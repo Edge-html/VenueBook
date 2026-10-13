@@ -1,5 +1,5 @@
 import type { FacilityId } from "./types";
-import { hourNumber } from "./time";
+import { formatHour12 } from "./time";
 
 export const APP_NAME = "VenueBook";
 export const SCHOOL_NAME = "Koronadal National Comprehensive High School";
@@ -82,7 +82,7 @@ export const TIME_BLOCKS: TimeBlock[] = Array.from(
     const start = OPENING_HOUR + index;
     return {
       id: `${`${start}`.padStart(2, "0")}-${`${start + 1}`.padStart(2, "0")}`,
-      label: hourNumber(start),
+      label: formatHour12(start),
       startMin: start * 60,
       endMin: (start + 1) * 60,
     };
