@@ -26,44 +26,38 @@ export function describeLoadError(error: unknown, fallback: string): string {
 }
 
 /**
- * Storage uploads fail with a CORS error and a retry-limit message when the
- * bucket has never been created for the project. None of that reaches the
- * person filling in the form, so it is translated here.
+ * ID photos are written to Firestore as bytes. A failure there is almost
+ * always a connectivity problem or the document limit, neither of which should
+ * reach the person filling in the form.
  */
 export function friendlyStorageError(error: unknown): string {
   const code = error instanceof FirebaseError ? error.code : "";
   const message = error instanceof Error ? error.message : "";
 
-  const looksLikeNetwork =
-    /Failed to fetch|NetworkError|ERR_FAILED|CORS|Load failed/i.test(message);
-
-  if (
-    code === "storage/retry-limit-exceeded" ||
-    code === "storage/canceled" ||
-    (looksLikeNetwork && code.startsWith("storage/")) ||
-    (looksLikeNetwork && code === "")
-  ) {
-    return "We could not reach Firebase Storage, so your ID photo was not uploaded. Storage is probably not enabled for this project yet — please ask an administrator to set it up, or submit without a photo for now.";
+  if (error instanceof TimeoutError) {
+    return "The ID photo took too long to upload. You can submit without it and an admin can ask you for it later.";
   }
 
-  if (code === "storage/unauthorized" || code === "storage/canceled") {
-    return "Your session may have expired. Please sign in again and retry.";
+  const looksLikeNetwork = /Failed to fetch|NetworkError|ERR_FAILED|CORS|Load failed/i.test(message);
+
+  if (code === "permission-denied" || looksLikeNetwork) {
+    return "We could not save your ID photo. You can still submit the request without it and an admin can ask you for it later.";
   }
 
-  if (code === "storage/quota-exceeded") {
-    return "The upload is too large. Please use an image under 5 MB.";
+  if (code === "resource-exhausted" || /too large|exceeds/i.test(message)) {
+    return "That image is too large. Please use a smaller photo, or submit without it for now.";
   }
 
-  if (code === "storage/invalid-argument") {
-    return "That file could not be uploaded. Please choose a JPG, PNG, or WEBP image.";
+  if (code === "unauthenticated") {
+    return "Your session has expired. Please sign in again and retry.";
   }
 
-  return error instanceof Error && message ? message : "The ID photo could not be uploaded.";
+  return "The ID photo could not be saved. You can submit without it and an admin can ask you for it later.";
 }
 
 /**
- * The Storage SDK retries for roughly a minute before giving up, which reads as
- * a frozen page. Failing sooner keeps the form usable.
+ * Firestore writes can hang on a flaky connection; failing sooner keeps the
+ * form usable.
  */
 export class TimeoutError extends Error {
   constructor() {

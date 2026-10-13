@@ -1,7 +1,6 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
 /**
  * The web config is public by design — it ships to the browser either way. The
@@ -26,7 +25,6 @@ export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseC
 
 export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
-export const storage = getStorage(firebaseApp);
 
 /**
  * Analytics is opt-in and defensive: it is a client-only concern, throws when

@@ -99,4 +99,8 @@ export const BOOKING_WINDOW_DAYS = 60;
 /** Slots that must have started before a same-day booking is rejected. */
 export const SAME_DAY_CUTOFF_HOUR = 7;
 
-export const MAX_ID_PHOTO_BYTES = 5 * 1024 * 1024;
+/**
+ * Firestore caps a document at 1 MiB, and a school ID photo only needs to be
+ * legible to an admin, so this is kept comfortably inside that limit.
+ */
+export const MAX_ID_PHOTO_BYTES = 700 * 1024;

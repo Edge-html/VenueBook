@@ -7,7 +7,7 @@ Comprehensive High School. Students request a slot, admins approve it, and
 everyone sees the same live calendar.
 
 Built with Next.js 16 (App Router), React 19, Tailwind CSS v4, TypeScript, and
-Firebase (Auth, Firestore, Storage, Analytics).
+Firebase (Auth, Firestore, Analytics).
 
 ---
 
@@ -33,7 +33,7 @@ Name, crest logo, tagline, feature cards, facility cards, and a live
 | **Notifications** | Approval and decline updates from admins. |
 
 ### Booking form
-Full name, grade, section, school ID photo (uploaded to Storage), date, and
+Full name, grade, section, school ID photo (saved to Firestore), date, and
 time slot. Only genuinely open slots are selectable. Submitted requests start
 as **Pending** and wait for an admin.
 
@@ -114,19 +114,17 @@ The rule and index files are included:
 
 - `firestore.rules` → Firestore security rules
 - `firestore.indexes.json` → composite indexes
-- `storage.rules` → Storage security rules
 
 With the Firebase CLI logged in (`firebase login`, then `firebase use
 simple-note-app-e9e59`), deploy all of them with:
 
 ```bash
 npm install -g firebase-tools
-firebase deploy --only firestore:rules,firestore:indexes,storage
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-Or paste `firestore.rules` and `storage.rules` into the console under
-**Rules**, and create the two composite indexes by hand under **Firestore →
-Indexes → Add index**:
+Or paste `firestore.rules` into the console under **Rules**, and create the two
+composite indexes by hand under **Firestore → Indexes → Add index**:
 
 | Collection | Fields |
 | --- | --- |
@@ -137,9 +135,18 @@ Those two back **My Reservations** and **Notifications**; without them those
 pages will show a "missing index" error. Everything else uses equality-only
 filters, which Firestore's automatic single-field indexes already cover.
 
-### 4. Enable Storage
+### 4. School ID photos — no setup needed
 
-Firebase console → **Storage** → **Get started**. Needed for school ID photos.
+ID photos are stored as bytes in a Firestore collection (`idPhotos`), not in
+Cloud Storage. Cloud Storage requires the **Blaze (pay-as-you-go) billing
+plan**, which this project does not need: Firestore is already provisioned and
+its free tier (1 GiB stored, 50k reads/day) is more than enough for a school.
+
+Because a Firestore document caps at 1 MiB, uploads are limited to **700 KB**.
+The upload limit is enforced both in the client and in `firestore.rules`.
+
+To switch back to Cloud Storage later, upgrade the project to Blaze and move
+the upload helpers in `src/lib/data.ts` back onto the Storage SDK.
 
 ### 5. Add your production domain
 
@@ -176,13 +183,18 @@ users/{uid}
 bookings/{bookingId}
   facilityId   "gymnasium" | "avr"
   date         "YYYY-MM-DD"
-  timeSlot     "07-09" | "09-11" | "11-13" | "13-15" | "15-17" | "17-19"
+  startTime    "HH:mm" 24-hour, e.g. "09:00"
+  endTime      "HH:mm" 24-hour, e.g. "12:00"
   status       "pending" | "approved" | "rejected" | "cancelled"
   userId, fullName, grade, section
-  idPhotoUrl, purpose, attendees, notes
+  idPhotoUrl   id of the idPhotos document, or null
+  purpose, attendees, notes
   createdAt, reviewedAt, reviewedBy, adminNote
 
-blockedSlots/{facilityId__date__timeSlot}
+idPhotos/{photoId}
+  ownerId, contentType, size, data (bytes, ≤ 700 KB), uploadedAt
+
+blockedSlots/{facilityId__date__blockId}
   facilityId, date, timeSlot, reason, createdBy, createdAt
 
 notifications/{id}

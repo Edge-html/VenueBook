@@ -57,6 +57,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── School ID photos ────────────────────────────────────
+    // Stored as bytes in Firestore rather than Cloud Storage, which needs the
+    // Blaze billing plan. The 1 MiB document limit is enforced here too.
+    match /idPhotos/{photoId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.size <= 700 * 1024
+                    && request.resource.data.contentType.matches('image/.*');
+      allow update: if false;
+      allow delete: if isSignedIn()
+                    && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
     // ── Schedule closures ────────────────────────────────────
     // Admin-maintained. Everyone signed in can read the calendar.
     match /blockedSlots/{slotId} {

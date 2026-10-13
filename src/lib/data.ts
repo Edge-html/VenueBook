@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -14,8 +15,7 @@ import {
   type DocumentData,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
 import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
 import type {
@@ -34,6 +34,7 @@ export const COLLECTIONS = {
   bookings: "bookings",
   blockedSlots: "blockedSlots",
   notifications: "notifications",
+  idPhotos: "idPhotos",
 } as const;
 
 /** Deterministic key so a slot can only be blocked once. */
@@ -41,8 +42,16 @@ export function blockedSlotId(facilityId: string, date: string, timeSlot: string
   return `${facilityId}__${date}__${timeSlot}`;
 }
 
-/* ── ID photo upload ───────────────────────────────────────────────────── */
+/* ── ID photo ──────────────────────────────────────────────────────────── */
 
+/**
+ * School IDs are stored as bytes in Firestore rather than Cloud Storage.
+ *
+ * Cloud Storage requires the Blaze (pay-as-you-go) billing plan, which is not
+ * an option for this project, whereas Firestore is already provisioned and has
+ * a generous free tier. Firestore documents cap at 1 MiB, so uploads are
+ * validated against MAX_ID_PHOTO_BYTES and the client downscales beforehand.
+ */
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function validateIdPhoto(file: File): string | null {
@@ -50,7 +59,7 @@ export function validateIdPhoto(file: File): string | null {
     return "Please upload a JPG, PNG, or WEBP image.";
   }
   if (file.size > MAX_ID_PHOTO_BYTES) {
-    return "Image is too large. Please keep it under 5 MB.";
+    return `Image is too large. Please keep it under ${Math.round(MAX_ID_PHOTO_BYTES / 1024)} KB.`;
   }
   return null;
 }
@@ -59,20 +68,43 @@ export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
   const error = validateIdPhoto(file);
   if (error) throw new Error(error);
 
-  const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `id-photos/${uid}/${Date.now()}.${extension}`;
-  const objectRef = ref(storage, path);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const id = `${uid}_${Date.now()}`;
 
-  await uploadBytes(objectRef, file, { contentType: file.type });
-  return getDownloadURL(objectRef);
+  await setDoc(doc(db, COLLECTIONS.idPhotos, id), {
+    ownerId: uid,
+    contentType: file.type,
+    size: bytes.length,
+    data: bytes,
+    uploadedAt: serverTimestamp(),
+  });
+
+  return id;
 }
 
-export async function removeUploadedIdPhoto(url: string | null): Promise<void> {
-  if (!url) return;
+export async function fetchIdPhoto(
+  id: string,
+): Promise<{ url: string; revoke: () => void } | null> {
+  const snap = await getDoc(doc(db, COLLECTIONS.idPhotos, id));
+  if (!snap.exists()) return null;
+
+  const { contentType, data } = snap.data() as {
+    contentType: string;
+    data: Uint8Array;
+  };
+
+  const blob = new Blob([data as BlobPart], { type: contentType || "image/jpeg" });
+  const url = URL.createObjectURL(blob);
+
+  return { url, revoke: () => URL.revokeObjectURL(url) };
+}
+
+export async function removeUploadedIdPhoto(id: string | null): Promise<void> {
+  if (!id) return;
   try {
-    await deleteObject(ref(storage, url));
+    await deleteDoc(doc(db, COLLECTIONS.idPhotos, id));
   } catch {
-    // The file may already be gone; nothing useful to do about it.
+    // The photo may already be gone; nothing useful to do about it.
   }
 }
 

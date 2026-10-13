@@ -21,6 +21,7 @@ import {
   FACILITIES,
   FACILITY_BY_ID,
   GRADES,
+  MAX_ID_PHOTO_BYTES,
   MIN_DURATION_MINUTES,
   OPENING_MINUTES,
   SECTION_MAX_LENGTH,
@@ -708,7 +709,9 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               <span className="mt-2 text-sm font-semibold text-neutral-800">
                 Tap to upload your school ID
               </span>
-              <span className="mt-0.5 text-xs text-neutral-500">JPG, PNG or WEBP &middot; max 5 MB</span>
+              <span className="mt-0.5 text-xs text-neutral-500">
+                JPG, PNG or WEBP &middot; max {Math.round(MAX_ID_PHOTO_BYTES / 1024)} KB
+              </span>
               <input
                 ref={fileInputRef}
                 id="idPhoto"
@@ -728,9 +731,9 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           {photoUploadFailed && (
             <div className="mt-3 rounded-lg border border-pending/40 bg-pending-soft px-3 py-3 text-sm text-pending">
               <p className="font-medium">Your ID photo did not upload, but you can still submit.</p>
-              <p className="mt-1 text-xs">
-                An admin can request the photo later. If this keeps happening, ask them to enable
-                Firebase Storage for the project.
+              <p className="mt-1 text-xs font-medium text-neutral-500">
+                An admin can request the photo later. If this keeps happening, ask them to
+                check your connection and try again.
               </p>
               <button
                 type="button"

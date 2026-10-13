@@ -31,7 +31,7 @@ export interface Booking {
   fullName: string;
   grade: string;
   section: string;
-  /** Download URL of the uploaded school ID in Firebase Storage. */
+  /** Id of the uploaded school ID in `idPhotos`, if one was attached. */
   idPhotoUrl: string | null;
   purpose: string;
   attendees: number;

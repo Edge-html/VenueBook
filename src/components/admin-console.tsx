@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   blockSlot,
   cancelBooking,
+  fetchIdPhoto,
   getAllBookings,
   getBlocks,
   notifyUser,
@@ -458,6 +459,58 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: stri
   );
 }
 
+/**
+ * ID photos live in Firestore as bytes, so they are fetched on demand and
+ * rendered from an object URL that is released on unmount.
+ */
+function IdPhotoThumbnail({ photoId }: { photoId: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let revoke: (() => void) | undefined;
+    let active = true;
+
+    fetchIdPhoto(photoId)
+      .then((photo) => {
+        if (!photo) {
+          if (active) setMissing(true);
+          return;
+        }
+        revoke = photo.revoke;
+        if (active) setSrc(photo.url);
+      })
+      .catch(() => {
+        if (active) setMissing(true);
+      });
+
+    return () => {
+      active = false;
+      revoke?.();
+    };
+  }, [photoId]);
+
+  if (missing) {
+    return <p className="mt-3 text-xs text-neutral-500">ID photo unavailable.</p>;
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="mb-1 text-xs font-medium text-neutral-600">Student ID</p>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt="Uploaded student ID"
+          className="h-28 w-44 rounded-lg border border-cream-300 object-cover"
+        />
+      ) : (
+        <div className="h-28 w-44 animate-pulse rounded-lg bg-cream-200" />
+      )}
+    </div>
+  );
+}
+
 function AdminBookingCard({
   booking,
   busy,
@@ -526,14 +579,7 @@ function AdminBookingCard({
           </dl>
 
           {booking.idPhotoUrl && (
-            <a
-              href={booking.idPhotoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-maroon-700 hover:underline"
-            >
-              View student ID photo
-            </a>
+            <IdPhotoThumbnail photoId={booking.idPhotoUrl} />
           )}
 
           {pending && (
