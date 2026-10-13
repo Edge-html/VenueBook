@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { Suspense } from "react";
 import { AvailabilitySearch } from "@/components/availability-search";
+import { HomeAccountSections } from "@/components/home-account-sections";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
 import { FACILITIES, HERO_IMAGE } from "@/lib/constants";
@@ -73,6 +74,13 @@ export default function LandingPage() {
           description="View available schedules for the gym or AVR."
         />
       </section>
+
+      {/* Signed-in visitors also get their four main functions here. */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <Suspense fallback={null}>
+          <HomeAccountSections />
+        </Suspense>
+      </div>
 
       {/* ── Facilities + today's availability ────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

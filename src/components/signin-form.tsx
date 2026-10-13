@@ -30,7 +30,7 @@ function SignInFields() {
   const [resetting, setResetting] = useState(false);
 
   const next = searchParams.get("next");
-  const destination = next?.startsWith("/") ? next : "/dashboard";
+  const destination = next?.startsWith("/") && next !== "/dashboard" ? next : "/";
 
   /** Typing again should clear whatever the last attempt said. */
   function edit(setter: (value: string) => void) {

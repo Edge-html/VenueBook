@@ -29,7 +29,7 @@ export function RequireAuth({
     // The profile lands a tick after the user record, so only redirect once it
     // has actually resolved.
     if (adminOnly && profile && !isAdmin) {
-      router.replace("/dashboard");
+      router.replace("/");
     }
   }, [initialising, user, profile, adminOnly, isAdmin, router, pathname]);
 
@@ -59,7 +59,7 @@ export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!initialising && user) router.replace("/dashboard");
+    if (!initialising && user) router.replace("/");
   }, [initialising, user, router]);
 
   if (initialising) return <FullPageLoader label="Loading…" />;

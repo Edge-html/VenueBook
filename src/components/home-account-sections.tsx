@@ -42,8 +42,13 @@ const ACTIONS = [
   },
 ];
 
-export default function DashboardPage() {
-  const { profile, user, isAdmin } = useAuth();
+/**
+ * The signed-in half of the home page: greeting, the four main functions, and
+ * upcoming reservations. Renders nothing at all for visitors, so the landing
+ * page stays a plain marketing page while signed out.
+ */
+export function HomeAccountSections() {
+  const { profile, user, isAdmin, initialising } = useAuth();
 
   const loadCounts = useCallback(async () => {
     if (!user) return { unread: 0, pending: 0 };
@@ -59,7 +64,12 @@ export default function DashboardPage() {
     };
   }, [user]);
 
-  const { data: counts } = useAsyncData({ cacheKey: `counts:${user?.uid ?? "none"}`, load: loadCounts });
+  const { data: counts } = useAsyncData({
+    cacheKey: `counts:${user?.uid ?? "none"}`,
+    load: loadCounts,
+  });
+
+  if (initialising || !user) return null;
 
   const pending = counts?.pending ?? 0;
   const unread = counts?.unread ?? 0;
@@ -72,17 +82,16 @@ export default function DashboardPage() {
   const firstName = (profile?.fullName ?? "").split(" ")[0] || "there";
 
   return (
-    <div className="animate-fade-up space-y-8">
-      <section>
-        <p className="text-sm font-medium text-maroon-700">KNCHS VenueBook</p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold text-maroon-900">
-          Hi, {firstName}.
-        </h1>
-        <p className="mt-1.5 text-neutral-600">
+    <div className="animate-fade-up space-y-6">
+      <section className="border-t border-cream-300 pt-8">
+        <p className="text-sm font-medium text-maroon-700">
+          Welcome back, {firstName}
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-extrabold text-maroon-900">
           {pending > 0
             ? `You have ${pending} request${pending > 1 ? "s" : ""} waiting for review.`
-            : "Everything is up to date. What would you like to book today?"}
-        </p>
+            : "What would you like to book today?"}
+        </h2>
       </section>
 
       {isAdmin && (
@@ -115,14 +124,14 @@ export default function DashboardPage() {
             </span>
 
             <div className="min-w-0">
-              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900">
+              <h3 className="flex items-center gap-2 font-display text-lg font-bold text-neutral-900">
                 {title}
                 {badges[href] > 0 && (
                   <span className="grid h-5 min-w-5 place-items-center rounded-full bg-booked px-1.5 text-[11px] font-bold text-white">
                     {badges[href]}
                   </span>
                 )}
-              </h2>
+              </h3>
               <p className="mt-1 text-sm text-neutral-600">{description}</p>
             </div>
 

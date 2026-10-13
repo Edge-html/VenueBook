@@ -75,7 +75,7 @@ function SignUpFields() {
     setBusy(true);
     try {
       await signUp({ fullName, phone, email, password });
-      router.replace("/dashboard");
+      router.replace("/");
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);

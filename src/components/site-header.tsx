@@ -25,6 +25,8 @@ const LINKS = [
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
+const HOME_LINKS = [{ href: "/", label: "Home", icon: LayoutDashboard }, ...LINKS];
+
 export function SiteHeader() {
   const pathname = usePathname();
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -49,10 +51,8 @@ export function SiteHeader() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen]);
 
-  const homeHref = user ? "/dashboard" : "/";
-  const nav = user
-    ? [{ href: "/dashboard", label: "Home", icon: LayoutDashboard }, ...LINKS]
-    : LINKS;
+  // `/` is the home page for everyone, signed in or not.
+  const isHome = pathname === "/";
 
   return (
     <header className="sticky top-0 z-50 border-b border-cream-300 bg-cream-50/95 backdrop-blur">
@@ -66,8 +66,8 @@ export function SiteHeader() {
         </div>
 
         <nav className="ml-auto hidden items-center gap-1 lg:flex">
-          {nav.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+          {HOME_LINKS.map(({ href, label, icon: Icon }) => {
+            const active = href === "/" ? isHome : pathname === href;
             return (
               <Link
                 key={href}
@@ -180,30 +180,31 @@ export function SiteHeader() {
         <div className="border-t border-cream-300 bg-cream-50 lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
             <Link
-              href={homeHref}
+              href="/"
               onClick={closeMenus}
-              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-cream-200"
+              aria-current={isHome ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                isHome ? "bg-maroon-50 text-maroon-800" : "text-neutral-700 hover:bg-cream-200"
+              }`}
             >
               <LayoutDashboard className="h-4 w-4" />
               Home
             </Link>
-            {nav
-              .filter((l) => l.href !== "/dashboard")
-              .map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={closeMenus}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                    pathname === href
-                      ? "bg-maroon-50 text-maroon-800"
-                      : "text-neutral-700 hover:bg-cream-200"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              ))}
+            {LINKS.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={closeMenus}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                  pathname === href
+                    ? "bg-maroon-50 text-maroon-800"
+                    : "text-neutral-700 hover:bg-cream-200"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            ))}
 
             <div className="my-2 h-px bg-cream-300" />
 
