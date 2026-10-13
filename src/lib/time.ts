@@ -24,7 +24,14 @@ export function fromMinutes(total: number): string {
   return `${`${hours}`.padStart(2, "0")}:${`${minutes}`.padStart(2, "0")}`;
 }
 
-/** "07:00" for a 24-hour clock hour. */
+/** 7 → "7 AM", 12 → "12 PM", 13 → "1 PM" */
+export function formatHour12(hour: number): string {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const display = hour % 12 === 0 ? 12 : hour % 12;
+  return `${display} ${suffix}`;
+}
+
+/** "09:00" for a 24-hour clock hour. */
 export function hourLabel(hour: number): string {
   return `${`${hour}`.padStart(2, "0")}:00`;
 }

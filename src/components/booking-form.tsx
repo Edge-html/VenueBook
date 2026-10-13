@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FullPageLoader } from "@/components/auth-guard";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -25,24 +25,20 @@ import {
   MIN_DURATION_MINUTES,
   OPENING_MINUTES,
   SECTION_MAX_LENGTH,
-  TIME_BLOCKS,
 } from "@/lib/constants";
 import {
   createBooking,
   findRangeConflicts,
-  getMonthAvailability,
   uploadIdPhoto,
   validateIdPhoto,
 } from "@/lib/data";
 import { addDays, formatLongDate, todayKey, toDateKey } from "@/lib/dates";
 import {
-  describeLoadError,
   friendlyStorageError,
   withTimeout,
 } from "@/lib/load-errors";
-import { formatClock, formatTimeRange, hourLabel, overlaps, toMinutes } from "@/lib/time";
-import type { FacilityId, SlotState } from "@/lib/types";
-import { useAsyncData } from "@/lib/use-async-data";
+import { formatClock, formatTimeRange, hourLabel, toMinutes } from "@/lib/time";
+import type { FacilityId } from "@/lib/types";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
@@ -113,27 +109,6 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadSlots = useCallback(
-    () => getMonthAvailability(facilityId, [date]),
-    [facilityId, date],
-  );
-
-  const {
-    data: slotData,
-    error: slotsError,
-    loading: loadingSlots,
-    reload: reloadSlots,
-  } = useAsyncData<Record<string, Record<string, SlotState>>>({
-    cacheKey: `slots:${facilityId}:${date}`,
-    load: loadSlots,
-    fallback: {},
-  });
-
-  const slots = slotData?.[date];
-  const slotError = slotsError
-    ? describeLoadError(new Error(slotsError), "Could not load the schedule.")
-    : null;
-
   const startMin = startTime ? toMinutes(startTime) : null;
   const endMin = endTime ? toMinutes(endTime) : null;
 
@@ -145,19 +120,11 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     startMin >= OPENING_MINUTES &&
     endMin <= CLOSING_MINUTES;
 
-  /** Which fixed blocks the chosen range touches, for the at-a-glance strip. */
-  const coveredBlocks = useMemo(() => {
-    if (startMin === null || endMin === null) return new Set<string>();
-    return new Set(
-      TIME_BLOCKS.filter((b) => overlaps(startMin, endMin, b.startMin, b.endMin)).map((b) => b.id),
-    );
-  }, [startMin, endMin]);
-
   // Re-check the range against Firestore whenever it settles on a new value.
   const rangeKey = rangeValid ? `${facilityId}:${date}:${startTime}:${endTime}` : "";
 
   useEffect(() => {
-    if (!rangeKey || slotError) return;
+    if (!rangeKey) return;
 
     let active = true;
 
@@ -178,7 +145,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     return () => {
       active = false;
     };
-  }, [rangeKey, slotError, facilityId, date, startTime, endTime]);
+  }, [rangeKey, facilityId, date, startTime, endTime]);
 
   // Results only apply to the exact range they were fetched for.
   const checking = Boolean(rangeKey) && checkedKey !== rangeKey;
@@ -303,7 +270,6 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
       });
 
       setSubmitted(true);
-      reloadSlots();
     } catch (err) {
       setError(
         err instanceof Error
@@ -430,12 +396,6 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             <p className="text-xs text-neutral-500">{formatLongDate(date)}</p>
           </div>
 
-          {slotError && (
-            <p className="mb-3 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
-              {slotError}
-            </p>
-          )}
-
           {/* Free-form start and end, to the minute. */}
           <div className="mb-4 grid gap-3 sm:grid-cols-[auto_1fr]">
             <div className="flex items-center gap-2">
@@ -520,38 +480,15 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             </p>
           )}
 
-          {/* At-a-glance view of the blocks the range covers. */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {TIME_BLOCKS.map((block) => {
-              const state: SlotState = slots?.[block.id] ?? "available";
-              const covered = coveredBlocks.has(block.id);
-
-              return (
-                <div
-                  key={block.id}
-                  title={`${block.label} — ${state}`}
-                  className={`rounded-lg px-3 py-2.5 text-xs font-semibold transition-all ${
-                    covered && rangeValid
-                      ? "bg-maroon-700 text-white shadow-sm"
-                      : state === "available"
-                        ? "bg-available-soft text-available"
-                        : state === "booked"
-                          ? "bg-booked-soft text-booked"
-                          : state === "pending"
-                            ? "bg-pending-soft text-pending"
-                            : "bg-cream-200 text-neutral-400"
-                  } ${loadingSlots ? "opacity-60" : ""}`}
-                >
-                  {block.label}
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="mt-2 text-xs text-neutral-500">
-            Green is open, red is booked, amber is awaiting approval, grey is closed. Your chosen
-            range is highlighted in maroon.
-          </p>
+          {!activeConflict && !activeWarning && startTime && endTime && (
+            <p className="text-xs text-neutral-500">
+              {formatTimeRange(startTime, endTime)} looks free. You can still{" "}
+              <Link href={`/availability?facility=${facilityId}&date=${date}`} className="font-semibold text-maroon-700 hover:underline">
+                check the full schedule
+              </Link>
+              .
+            </p>
+          )}
         </fieldset>
 
         {/* ── Details ──────────────────────────────────────── */}

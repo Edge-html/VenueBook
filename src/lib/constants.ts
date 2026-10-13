@@ -1,4 +1,5 @@
 import type { FacilityId } from "./types";
+import { formatHour12 } from "./time";
 
 export const APP_NAME = "VenueBook";
 export const SCHOOL_NAME = "Koronadal National Comprehensive High School";
@@ -61,9 +62,9 @@ export const CLOSING_MINUTES = 19 * 60; // 19:00
 export const MIN_DURATION_MINUTES = 60;
 
 /**
- * Fixed blocks used only for the at-a-glance availability strip and for admin
- * closures. A booking may span any part of these — see `startTime`/`endTime`
- * on a booking.
+ * Fixed one-hour blocks used for the availability display and for admin
+ * closures. A booking may still span any number of them — see `startTime` and
+ * `endTime` on a booking.
  */
 export interface TimeBlock {
   id: string;
@@ -72,14 +73,21 @@ export interface TimeBlock {
   endMin: number;
 }
 
-export const TIME_BLOCKS: TimeBlock[] = [
-  { id: "07-09", label: "7–9 AM", startMin: 7 * 60, endMin: 9 * 60 },
-  { id: "09-11", label: "9–11 AM", startMin: 9 * 60, endMin: 11 * 60 },
-  { id: "11-13", label: "11 AM–1 PM", startMin: 11 * 60, endMin: 13 * 60 },
-  { id: "13-15", label: "1–3 PM", startMin: 13 * 60, endMin: 15 * 60 },
-  { id: "15-17", label: "3–5 PM", startMin: 15 * 60, endMin: 17 * 60 },
-  { id: "17-19", label: "5–7 PM", startMin: 17 * 60, endMin: 19 * 60 },
-];
+const OPENING_HOUR = OPENING_MINUTES / 60;
+const CLOSING_HOUR = CLOSING_MINUTES / 60;
+
+export const TIME_BLOCKS: TimeBlock[] = Array.from(
+  { length: CLOSING_HOUR - OPENING_HOUR },
+  (_, index) => {
+    const start = OPENING_HOUR + index;
+    return {
+      id: `${`${start}`.padStart(2, "0")}-${`${start + 1}`.padStart(2, "0")}`,
+      label: `${formatHour12(start)}–${formatHour12(start + 1)}`,
+      startMin: start * 60,
+      endMin: (start + 1) * 60,
+    };
+  },
+);
 
 /** Back-compat alias while the UI still refers to blocks as slots. */
 export const TIME_SLOTS = TIME_BLOCKS;

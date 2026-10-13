@@ -248,7 +248,7 @@ export function AvailabilityCalendar() {
           </div>
 
           <p className="mt-3 text-center text-xs text-neutral-500">
-            Each bar is one time slot. Only the next {BOOKING_WINDOW_DAYS} days can be booked.
+            Each bar is one hour. Only the next {BOOKING_WINDOW_DAYS} days can be booked.
           </p>
         </section>
 
