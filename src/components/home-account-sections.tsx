@@ -8,11 +8,11 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useMemo } from "react";
 import { AdminConsole } from "@/components/admin-console";
 import { useAuth } from "@/lib/auth-context";
-import { getBookingsForUser, getNotifications } from "@/lib/data";
-import { useAsyncData } from "@/lib/use-async-data";
+import { bookingsQueryForUser, notificationsQueryForUser } from "@/lib/data";
+import { useLiveQuery } from "@/lib/use-live-query";
 
 const ACTIONS = [
   {
@@ -69,27 +69,32 @@ export function HomeAccountSections() {
 function StudentSections() {
   const { user } = useAuth();
 
-  const loadCounts = useCallback(async () => {
-    if (!user) return { unread: 0, pending: 0 };
-
-    const [notifications, bookings] = await Promise.all([
-      getNotifications(user.uid),
-      getBookingsForUser(user.uid),
-    ]);
-
-    return {
-      unread: notifications.filter((n) => !n.read).length,
-      pending: bookings.filter((b) => b.status === "pending").length,
-    };
-  }, [user]);
-
-  const { data: counts } = useAsyncData({
-    cacheKey: `counts:${user?.uid ?? "none"}`,
-    load: loadCounts,
+  // Live: the pending/unread badges stay in step with the booking and
+  // notification screens without the student having to reload.
+  const bookingsLive = useLiveQuery({
+    cacheKey: `counts-bookings:${user?.uid ?? "none"}`,
+    enabled: Boolean(user),
+    deps: [user?.uid],
+    buildQueries: () => (user ? [bookingsQueryForUser(user.uid)] : []),
   });
 
-  const pending = counts?.pending ?? 0;
-  const unread = counts?.unread ?? 0;
+  const notificationsLive = useLiveQuery({
+    cacheKey: `counts-notifications:${user?.uid ?? "none"}`,
+    enabled: Boolean(user),
+    deps: [user?.uid],
+    buildQueries: () => (user ? [notificationsQueryForUser(user.uid)] : []),
+  });
+
+  const pending = useMemo(
+    () =>
+      (bookingsLive.docs ?? []).filter((doc) => doc.data().status === "pending").length,
+    [bookingsLive.docs],
+  );
+
+  const unread = useMemo(
+    () => (notificationsLive.docs ?? []).filter((doc) => !doc.data().read).length,
+    [notificationsLive.docs],
+  );
 
   const badges: Record<string, number> = {
     "/reservations": pending,

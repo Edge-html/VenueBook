@@ -2,13 +2,19 @@
 
 import { CalendarDays, Clock, Dumbbell, MonitorPlay } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { FACILITIES, OPENING_HOURS_LABEL, TIME_BLOCKS } from "@/lib/constants";
-import { getMonthAvailability } from "@/lib/data";
+import {
+  blocksQueriesForDates,
+  bookingsQueriesForDates,
+  foldBlocksIntoSlots,
+  parseBlockedSlotDoc,
+  parseBookingDoc,
+} from "@/lib/data";
 import { formatLongDate, todayKey } from "@/lib/dates";
 import { describeLoadError } from "@/lib/load-errors";
-import { useAsyncData } from "@/lib/use-async-data";
+import { useLiveQuery } from "@/lib/use-live-query";
 import { useIsMounted } from "@/lib/use-is-mounted";
 import { SlotChip } from "@/components/status-pill";
 import type { FacilityId, SlotState } from "@/lib/types";
@@ -43,26 +49,47 @@ export function TodaysAvailability() {
   const { user, initialising } = useAuth();
   const date = mounted ? todayKey() : "";
   const now = useNow(mounted);
+  const signedIn = Boolean(user);
 
-  const load = useCallback(async () => {
-    // Availability is only readable when signed in; guests get a prompt
-    // instead of a permission error.
-    if (!date || !user) return {} as Record<string, Record<string, SlotState>>;
-
-    const entries = await Promise.all(
-      FACILITIES.map(async (facility) => {
-        const snapshot = await getMonthAvailability(facility.id, [date]);
-        return [facility.id, snapshot[date]] as const;
-      }),
-    );
-    return Object.fromEntries(entries) as Record<string, Record<string, SlotState>>;
-  }, [date, user]);
-
-  const { data, error, loading } = useAsyncData<Record<string, Record<string, SlotState>>>({
-    cacheKey: `today:${date}:${user?.uid ?? "guest"}`,
-    load,
-    fallback: {},
+  // Live: an approval, a closure or a no-show lands here without a refresh.
+  const bookingLive = useLiveQuery({
+    cacheKey: `today-bookings:${date}:${signedIn}`,
+    enabled: signedIn && Boolean(date),
+    deps: [date],
+    buildQueries: () => [
+      ...bookingsQueriesForDates("gymnasium", [date]),
+      ...bookingsQueriesForDates("avr", [date]),
+    ],
   });
+
+  const blockLive = useLiveQuery({
+    cacheKey: `today-blocks:${date}:${signedIn}`,
+    enabled: signedIn && Boolean(date),
+    deps: [date],
+    buildQueries: () => [
+      ...blocksQueriesForDates("gymnasium", [date]),
+      ...blocksQueriesForDates("avr", [date]),
+    ],
+  });
+
+  const error = bookingLive.error ?? blockLive.error;
+  const loading = bookingLive.loading || blockLive.loading;
+
+  const slotsByFacility = useMemo(() => {
+    const bookings = (bookingLive.docs ?? []).map(parseBookingDoc);
+    const blocks = (blockLive.docs ?? []).map(parseBlockedSlotDoc);
+
+    return Object.fromEntries(
+      FACILITIES.map((facility) => [
+        facility.id,
+        foldBlocksIntoSlots(
+          bookings.filter((b) => b.facilityId === facility.id),
+          blocks.filter((b) => b.facilityId === facility.id),
+          date,
+        ),
+      ]),
+    ) as Record<string, Record<string, SlotState>>;
+  }, [bookingLive.docs, blockLive.docs, date]);
 
   return (
     <section className="card p-5">
@@ -123,7 +150,7 @@ export function TodaysAvailability() {
         ) : (
           FACILITIES.map((facility) => {
             const Icon = FACILITY_ICONS[facility.id];
-            const daySlots = data?.[facility.id];
+            const daySlots = slotsByFacility[facility.id];
 
             if (error) {
               return (

@@ -10,11 +10,16 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { getNotifications, markAllNotificationsRead } from "@/lib/data";
+import {
+  markAllNotificationsRead,
+  notificationsQueryForUser,
+  parseNotificationDoc,
+} from "@/lib/data";
 import type { AppNotification } from "@/lib/types";
-import { useAsyncData } from "@/lib/use-async-data";
+import { useLiveQuery } from "@/lib/use-live-query";
+
 
 const KIND_STYLES: Record<AppNotification["kind"], { icon: typeof Bell; className: string }> = {
   approved: { icon: CheckCircle2, className: "bg-available-soft text-available" },
@@ -44,26 +49,24 @@ export function NotificationList() {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(
-    () => (user ? getNotifications(user.uid) : Promise.resolve<AppNotification[]>([])),
-    [user],
-  );
-
-  const { data: itemRows, loading, setData } = useAsyncData<AppNotification[]>({
+  // Live: the notification arrives the moment an admin approves or declines.
+  const live = useLiveQuery({
     cacheKey: `notifications:${user?.uid ?? "none"}`,
-    load,
-    fallback: [],
+    enabled: Boolean(user),
+    deps: [user?.uid],
+    buildQueries: () => (user ? [notificationsQueryForUser(user.uid)] : []),
   });
 
-  const items = itemRows ?? [];
+  const items = useMemo(() => (live.docs ?? []).map(parseNotificationDoc), [live.docs]);
+  const loading = live.loading;
 
   async function markAllRead() {
     if (!user) return;
 
     setBusy(true);
     try {
+      // The live listener reflects the change, so no local patch is needed.
       await markAllNotificationsRead(user.uid);
-      setData((current) => current?.map((n) => ({ ...n, read: true })) ?? null);
     } catch {
       // Leave the list as-is; the user can retry.
     } finally {

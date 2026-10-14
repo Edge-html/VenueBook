@@ -1,17 +1,22 @@
 "use client";
 
-import { CalendarPlus, CheckCircle2, Dumbbell, MonitorPlay, RefreshCw, XCircle } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Dumbbell, MonitorPlay, XCircle } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useMemo, useState } from "react";
 import { PhasePill, InUseBanner } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
 import { canMarkCompleted, bookingPhase } from "@/lib/booking-phase";
 import { FACILITY_BY_ID } from "@/lib/constants";
-import { cancelBooking, getBookingsForUser, markBookingCompleted } from "@/lib/data";
+import {
+  bookingsQueryForUser,
+  cancelBooking,
+  markBookingCompleted,
+  parseBookingDoc,
+} from "@/lib/data";
 import { formatLongDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
-import { useAsyncData } from "@/lib/use-async-data";
+import { useLiveQuery } from "@/lib/use-live-query";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
@@ -23,16 +28,17 @@ export function ReservationsList() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(
-    () => (user ? getBookingsForUser(user.uid) : Promise.resolve<Booking[]>([])),
-    [user],
-  );
-
-  const { data: bookings, loading, reload, setData } = useAsyncData<Booking[]>({
+  // Live: an admin approval, decline or cancellation lands here immediately.
+  const live = useLiveQuery({
     cacheKey: `reservations:${user?.uid ?? "none"}`,
-    load,
-    fallback: [],
+    enabled: Boolean(user),
+    deps: [user?.uid],
+    buildQueries: () => (user ? [bookingsQueryForUser(user.uid)] : []),
   });
+
+  const bookings = useMemo(() => (live.docs ?? []).map(parseBookingDoc), [live.docs]);
+  const loading = live.loading;
+  const loadError = live.error;
 
   async function handleCancel(booking: Booking) {
     if (!user) return;
@@ -41,10 +47,8 @@ export function ReservationsList() {
     setError(null);
 
     try {
+      // No local patch needed: the live listener pushes the new status back.
       await cancelBooking(booking.id);
-      setData((current) =>
-        current?.map((b) => (b.id === booking.id ? { ...b, status: "cancelled" } : b)) ?? null,
-      );
     } catch {
       setError("Could not cancel that reservation. Please try again.");
     } finally {
@@ -87,14 +91,6 @@ export function ReservationsList() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={reload}
-            aria-label="Refresh reservations"
-            className="grid h-10 w-10 place-items-center rounded-md border border-ink-300 bg-white text-brand-700"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
           <Link href="/book" className="btn btn-primary">
             <CalendarPlus className="h-4 w-4" />
             New booking
@@ -105,6 +101,12 @@ export function ReservationsList() {
       {error && (
         <p className="mb-4 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
           {error}
+        </p>
+      )}
+
+      {loadError && (
+        <p className="mb-4 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
+          {loadError}
         </p>
       )}
 

@@ -7,24 +7,25 @@ import {
   Dumbbell,
   Loader2,
   MonitorPlay,
-  RefreshCw,
   ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { InUseBanner, PhasePill } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
 import { bookingPhase, isNoShowEligible } from "@/lib/booking-phase";
 import {
+  allBookingsQuery,
   blockSlot,
+  blocksQueryForDate,
   cancelBooking,
   fetchIdPhoto,
-  getAllBookings,
-  getBlocks,
   markBookingCompleted,
   markBookingNoShow,
   notifyUser,
+  parseBlockedSlotDoc,
+  parseBookingDoc,
   removeBooking,
   setBookingStatus,
   unblockSlot,
@@ -32,8 +33,8 @@ import {
 import { formatLongDate, formatShortDate, todayKey } from "@/lib/dates";
 import { BOOKING_WINDOW_DAYS, FACILITIES, FACILITY_BY_ID, TIME_BLOCKS } from "@/lib/constants";
 import { formatTimeRange, describeMinutes } from "@/lib/time";
-import type { BlockedSlot, Booking, BookingStatus, FacilityId } from "@/lib/types";
-import { useAsyncData } from "@/lib/use-async-data";
+import type { Booking, BookingStatus, FacilityId } from "@/lib/types";
+import { useLiveQuery } from "@/lib/use-live-query";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
@@ -75,31 +76,25 @@ export function AdminConsole() {
   const [scheduleDate, setScheduleDate] = useState(todayKey());
   const [blockReason, setBlockReason] = useState("");
 
-  const loadBookings = useCallback(() => getAllBookings(), []);
-  const {
-    data: bookingRows,
-    loading: loadingBookings,
-    reload: reloadBookings,
-    setData: setBookings,
-  } = useAsyncData<Booking[]>({ cacheKey: "all-bookings", load: loadBookings, fallback: [] });
-
-  const loadBlocks = useCallback(
-    () => getBlocks(scheduleFacility, scheduleDate),
-    [scheduleFacility, scheduleDate],
-  );
-  const {
-    data: blockRows,
-    loading: loadingBlocks,
-    reload: reloadBlocks,
-  } = useAsyncData<BlockedSlot[]>({
-    cacheKey: `blocks:${scheduleFacility}:${scheduleDate}`,
-    load: loadBlocks,
-    fallback: [],
+  const bookingLive = useLiveQuery({
+    cacheKey: "admin-bookings",
+    deps: [],
+    buildQueries: () => [allBookingsQuery()],
   });
 
-  // Memoed so downstream hooks see a stable reference between renders.
-  const bookings = useMemo(() => bookingRows ?? [], [bookingRows]);
-  const blocks = useMemo(() => blockRows ?? [], [blockRows]);
+  const blockLive = useLiveQuery({
+    cacheKey: `admin-blocks:${scheduleFacility}:${scheduleDate}`,
+    deps: [scheduleFacility, scheduleDate],
+    buildQueries: () => [blocksQueryForDate(scheduleFacility, scheduleDate)],
+  });
+
+  const bookings = useMemo(() => (bookingLive.docs ?? []).map(parseBookingDoc), [bookingLive.docs]);
+  const blocks = useMemo(
+    () => (blockLive.docs ?? []).map(parseBlockedSlotDoc),
+    [blockLive.docs],
+  );
+  const loadingBookings = bookingLive.loading;
+  const loadingBlocks = blockLive.loading;
 
   // The toast is purely informational and self-clears.
   useEffect(() => {
@@ -150,18 +145,7 @@ export function AdminConsole() {
         booking.id,
       );
 
-      setBookings((current) =>
-        current?.map((b) =>
-          b.id === booking.id
-            ? {
-                ...b,
-                status: decision,
-                adminNote: note.trim() || null,
-                reviewedBy: adminName,
-              }
-            : b,
-        ) ?? null,
-      );
+      // The live listener pushes the new status back, so no local patch.
 
       setToast(
         decision === "approved" ? "Booking approved." : "Booking declined and student notified.",
@@ -191,7 +175,6 @@ export function AdminConsole() {
         "cancelled",
         booking.id,
       );
-      setBookings((current) => current?.filter((b) => b.id !== booking.id) ?? null);
       setToast("Booking deleted.");
     } catch {
       setError("Could not delete that booking.");
@@ -210,9 +193,6 @@ export function AdminConsole() {
         `An admin cancelled your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(booking.date)}.`,
         "cancelled",
         booking.id,
-      );
-      setBookings((current) =>
-        current?.map((b) => (b.id === booking.id ? { ...b, status: "cancelled" } : b)) ?? null,
       );
       setToast("Booking cancelled.");
     } catch {
@@ -277,7 +257,6 @@ export function AdminConsole() {
         setToast("Slot closed for bookings.");
       }
       setBlockReason("");
-      reloadBlocks();
     } catch {
       setError("Could not update the schedule.");
     }
@@ -293,14 +272,9 @@ export function AdminConsole() {
           </p>
           <h1 className="mt-1 text-3xl font-bold text-brand-900">Admin Console</h1>
           <p className="mt-1.5 text-ink-600">
-            Review student requests and control the facility schedule.
+            Review student requests and control the facility schedule. Updates arrive live.
           </p>
         </div>
-
-        <button type="button" onClick={reloadBookings} className="btn btn-outline">
-          <RefreshCw className={`h-4 w-4 ${loadingBookings ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
       </header>
 
       {/* ── Stats ───────────────────────────────────────────── */}

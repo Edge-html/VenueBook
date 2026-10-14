@@ -1,12 +1,18 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Dumbbell, MonitorPlay, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Dumbbell, MonitorPlay } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FULL_LEGEND, SlotChip } from "@/components/status-pill";
 import { BOOKING_WINDOW_DAYS, FACILITIES, TIME_BLOCKS } from "@/lib/constants";
-import { getMonthAvailability } from "@/lib/data";
+import {
+  blocksQueriesForDates,
+  bookingsQueriesForDates,
+  foldBlocksIntoSlots,
+  parseBlockedSlotDoc,
+  parseBookingDoc,
+} from "@/lib/data";
 import {
   addDays,
   formatLongDate,
@@ -19,7 +25,7 @@ import {
 import type { FacilityId, SlotState } from "@/lib/types";
 import { describeLoadError } from "@/lib/load-errors";
 import { describeMinutes } from "@/lib/time";
-import { useAsyncData } from "@/lib/use-async-data";
+import { useLiveQuery } from "@/lib/use-live-query";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
@@ -61,23 +67,37 @@ export function AvailabilityCalendar() {
     return [...new Set(keys)];
   }, [grid, today, maxDate]);
 
-  const load = useCallback(
-    () => getMonthAvailability(facilityId, wantedDates),
-    [facilityId, wantedDates],
-  );
-
   const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
 
-  const {
-    data,
-    error,
-    loading,
-    reload,
-  } = useAsyncData<Record<string, Record<string, SlotState>>>({
-    cacheKey: `${facilityId}:${monthKey}`,
-    load,
-    fallback: {},
+  // `today` is part of the key because the bookable window slides forward at
+  // midnight; without it an open tab would keep listening to the old range.
+  const windowKey = `${today}:${wantedDates.length}`;
+
+  const bookingLive = useLiveQuery({
+    cacheKey: `cal-bookings:${facilityId}:${monthKey}:${windowKey}`,
+    deps: [facilityId, monthKey, windowKey],
+    buildQueries: () => bookingsQueriesForDates(facilityId, wantedDates),
   });
+
+  const blockLive = useLiveQuery({
+    cacheKey: `cal-blocks:${facilityId}:${monthKey}:${windowKey}`,
+    deps: [facilityId, monthKey, windowKey],
+    buildQueries: () => blocksQueriesForDates(facilityId, wantedDates),
+  });
+
+  const loading = bookingLive.loading || blockLive.loading;
+  const error = bookingLive.error ?? blockLive.error;
+
+  const data = useMemo(() => {
+    if (!bookingLive.docs || !blockLive.docs) return null;
+
+    const bookings = bookingLive.docs.map(parseBookingDoc);
+    const blocks = blockLive.docs.map(parseBlockedSlotDoc);
+
+    return Object.fromEntries(
+      wantedDates.map((day) => [day, foldBlocksIntoSlots(bookings, blocks, day)]),
+    ) as Record<string, Record<string, SlotState>>;
+  }, [bookingLive.docs, blockLive.docs, wantedDates]);
 
   function shiftMonth(delta: number) {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
@@ -106,15 +126,6 @@ export function AvailabilityCalendar() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={reload}
-            aria-label="Refresh schedule"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 bg-white text-brand-700"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
-
           <ul className="flex flex-wrap items-center gap-4 text-xs font-medium text-ink-600">
             {FULL_LEGEND.map((item) => (
               <li key={item.label} className="flex items-center gap-1.5">

@@ -2,31 +2,30 @@
 
 import { CalendarDays, Dumbbell, MonitorPlay } from "lucide-react";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useMemo } from "react";
 import { StatusPill } from "@/components/status-pill";
 import { useAuth } from "@/lib/auth-context";
 import { FACILITY_BY_ID } from "@/lib/constants";
-import { getBookingsForUser } from "@/lib/data";
+import { bookingsQueryForUser, parseBookingDoc } from "@/lib/data";
 import { formatShortDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
-import type { Booking } from "@/lib/types";
-import { useAsyncData } from "@/lib/use-async-data";
+import { useLiveQuery } from "@/lib/use-live-query";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
 export function DashboardOverview() {
   const { user } = useAuth();
 
-  const load = useCallback(
-    () => (user ? getBookingsForUser(user.uid) : Promise.resolve<Booking[]>([])),
-    [user],
-  );
-
-  const { data, loading } = useAsyncData<Booking[]>({
+  // Live: an approval moves a pending request into this list without a refresh.
+  const live = useLiveQuery({
     cacheKey: `bookings:${user?.uid ?? "none"}`,
-    load,
-    fallback: [],
+    enabled: Boolean(user),
+    deps: [user?.uid],
+    buildQueries: () => (user ? [bookingsQueryForUser(user.uid)] : []),
   });
+
+  const data = useMemo(() => (live.docs ?? []).map(parseBookingDoc), [live.docs]);
+  const loading = live.loading;
 
   const today = todayKey();
   const upcoming = (data ?? [])

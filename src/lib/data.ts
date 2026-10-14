@@ -14,6 +14,7 @@ import {
   updateDoc,
   where,
   type DocumentData,
+  type Query,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -218,42 +219,6 @@ function chunk<T>(items: T[], size: number): T[][] {
  * Calendar-sized read: two `in` queries per 25 days instead of two per day.
  * Returns `date → block id → state`, with every requested date present.
  */
-export async function getMonthAvailability(
-  facilityId: FacilityId,
-  dates: string[],
-): Promise<Record<string, Record<string, SlotState>>> {
-  if (dates.length === 0) return {};
-
-  const readByDate = async (name: string) => {
-    const results = await Promise.all(
-      chunk(dates, IN_CHUNK).map((batch) =>
-        getDocs(
-          query(
-            collection(db, name),
-            where("facilityId", "==", facilityId),
-            where("date", "in", batch),
-          ),
-        ),
-      ),
-    );
-    return results.flatMap((snap) => snap.docs);
-  };
-
-  const [bookingDocs, blockDocs] = await Promise.all([
-    readByDate(COLLECTIONS.bookings),
-    readByDate(COLLECTIONS.blockedSlots),
-  ]);
-
-  const bookings = bookingDocs.map(toBooking);
-  const blocks = blockDocs.map(toBlockedSlot);
-
-  const result: Record<string, Record<string, SlotState>> = {};
-  for (const date of dates) {
-    result[date] = foldIntoBlocks(bookings, blocks, date);
-  }
-
-  return result;
-}
 
 /**
  * Checks a requested range against everything already on the day: returns the
@@ -318,6 +283,83 @@ export async function findRangeConflicts(
   return { hard, pending };
 }
 
+/**
+ * Query builders used by `useLiveQuery`. These return queries rather than
+ * results so callers can subscribe instead of polling.
+ */
+export function bookingsQueriesForDates(
+  facilityId: FacilityId,
+  dates: string[],
+): Query<DocumentData>[] {
+  if (dates.length === 0) return [];
+
+  return chunk(dates, IN_CHUNK).map((batch) =>
+    query(
+      collection(db, COLLECTIONS.bookings),
+      where("facilityId", "==", facilityId),
+      where("date", "in", batch),
+    ),
+  );
+}
+
+export function blocksQueriesForDates(
+  facilityId: FacilityId,
+  dates: string[],
+): Query<DocumentData>[] {
+  if (dates.length === 0) return [];
+
+  return chunk(dates, IN_CHUNK).map((batch) =>
+    query(
+      collection(db, COLLECTIONS.blockedSlots),
+      where("facilityId", "==", facilityId),
+      where("date", "in", batch),
+    ),
+  );
+}
+
+export function bookingsQueryForUser(uid: string): Query<DocumentData> {
+  return query(
+    collection(db, COLLECTIONS.bookings),
+    where("userId", "==", uid),
+    orderBy("createdAt", "desc"),
+    limit(100),
+  );
+}
+
+export function allBookingsQuery(): Query<DocumentData> {
+  return query(collection(db, COLLECTIONS.bookings), orderBy("createdAt", "desc"), limit(300));
+}
+
+export function notificationsQueryForUser(uid: string): Query<DocumentData> {
+  return query(
+    collection(db, COLLECTIONS.notifications),
+    where("uid", "==", uid),
+    orderBy("createdAt", "desc"),
+    limit(50),
+  );
+}
+
+export function blocksQueryForDate(facilityId: FacilityId, date: string): Query<DocumentData> {
+  return query(
+    collection(db, COLLECTIONS.blockedSlots),
+    where("facilityId", "==", facilityId),
+    where("date", "==", date),
+  );
+}
+
+/** Parsers exported so live snapshots reuse the same mapping as one-shot reads. */
+export const parseBookingDoc = (doc: { id: string; data: () => DocumentData }) =>
+  parseBooking(doc.id, doc.data());
+
+/** Parsers exported so live snapshots reuse the same mapping as one-shot reads. */
+export const parseNotificationDoc = (doc: { id: string; data: () => DocumentData }) =>
+  toNotification({ id: doc.id, data: doc.data } as QueryDocumentSnapshot<DocumentData>);
+
+export const parseBlockedSlotDoc = toBlockedSlot;
+
+/** Folds live docs into the same per-block state the one-shot read produces. */
+export const foldBlocksIntoSlots = foldIntoBlocks;
+
 /* ── Bookings ──────────────────────────────────────────────────────────── */
 
 export interface NewBookingInput {
@@ -377,25 +419,6 @@ export async function markBookingNoShow(bookingId: string): Promise<void> {
     noShowAt: serverTimestamp(),
     reviewedAt: serverTimestamp(),
   });
-}
-
-export async function getBookingsForUser(uid: string): Promise<Booking[]> {
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.bookings),
-      where("userId", "==", uid),
-      orderBy("createdAt", "desc"),
-      limit(100),
-    ),
-  );
-  return snap.docs.map(toBooking);
-}
-
-export async function getAllBookings(): Promise<Booking[]> {
-  const snap = await getDocs(
-    query(collection(db, COLLECTIONS.bookings), orderBy("createdAt", "desc"), limit(300)),
-  );
-  return snap.docs.map(toBooking);
 }
 
 export async function setBookingStatus(
@@ -513,18 +536,6 @@ export async function removeBooking(booking: Booking): Promise<void> {
 }
 
 /* ── Notifications ─────────────────────────────────────────────────────── */
-
-export async function getNotifications(uid: string): Promise<AppNotification[]> {
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.notifications),
-      where("uid", "==", uid),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    ),
-  );
-  return snap.docs.map(toNotification);
-}
 
 export async function markAllNotificationsRead(uid: string): Promise<void> {
   const snap = await getDocs(
