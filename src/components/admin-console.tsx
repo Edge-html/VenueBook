@@ -38,13 +38,33 @@ import { useAsyncData } from "@/lib/use-async-data";
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
 
 type Tab = "requests" | "schedule";
-type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type StatusFilter = BookingStatus | "all";
+
+/** Filter pills, in the order they appear. `all` is the default. */
+const STATUS_FILTERS: StatusFilter[] = [
+  "all",
+  "pending",
+  "approved",
+  "completed",
+  "no_show",
+  "rejected",
+];
+
+const FILTER_LABELS: Record<StatusFilter, string> = {
+  all: "All",
+  pending: "Pending",
+  approved: "Approved",
+  completed: "Completed",
+  no_show: "No show",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
+};
 
 export function AdminConsole() {
   const { profile, user } = useAuth();
 
   const [tab, setTab] = useState<Tab>("requests");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -321,19 +341,19 @@ export function AdminConsole() {
       {tab === "requests" ? (
         <>
           <div className="mb-4 flex flex-wrap gap-2">
-            {(["pending", "approved", "rejected", "all"] as const).map((value) => (
+            {STATUS_FILTERS.map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setStatusFilter(value)}
                 aria-pressed={statusFilter === value}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                   statusFilter === value
                     ? "border-brand-700 bg-brand-700 text-white"
                     : "border-ink-300 bg-white text-ink-700 hover:bg-ink-100"
                 }`}
               >
-                {value}
+                {FILTER_LABELS[value]}
               </button>
             ))}
           </div>
@@ -346,8 +366,8 @@ export function AdminConsole() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="card px-6 py-14 text-center">
-              <p className="text-lg font-bold text-brand-900">
-                No {statusFilter === "all" ? "" : statusFilter} bookings
+              <p className="text-base font-semibold text-brand-900">
+                {statusFilter === "all" ? "No bookings yet" : `No ${FILTER_LABELS[statusFilter].toLowerCase()} bookings`}
               </p>
               <p className="mt-1.5 text-sm text-ink-600">
                 Student requests will show up here as soon as they are sent.
