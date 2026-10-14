@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   CalendarRange,
   Check,
   Dumbbell,
@@ -12,14 +13,17 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { StatusPill } from "@/components/status-pill";
+import { InUseBanner, PhasePill } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
+import { bookingPhase, isNoShowEligible } from "@/lib/booking-phase";
 import {
   blockSlot,
   cancelBooking,
   fetchIdPhoto,
   getAllBookings,
   getBlocks,
+  markBookingCompleted,
+  markBookingNoShow,
   notifyUser,
   removeBooking,
   setBookingStatus,
@@ -198,6 +202,43 @@ export function AdminConsole() {
     }
   }
 
+  async function handleNoShow(booking: Booking) {
+    if (!window.confirm("Release this slot as a no-show? The venue becomes bookable again.")) {
+      return;
+    }
+
+    setBusyId(booking.id);
+    try {
+      await markBookingNoShow(booking.id);
+      await notifyUser(
+        booking.userId,
+        "Marked as a no-show",
+        `Your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(
+          booking.date,
+        )} was closed as a no-show.`,
+        "cancelled",
+        booking.id,
+      );
+      setToast("Slot released — marked as a no-show.");
+    } catch {
+      setError("Could not release that slot.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleComplete(booking: Booking) {
+    setBusyId(booking.id);
+    try {
+      await markBookingCompleted(booking.id, true);
+      setToast("Booking closed out.");
+    } catch {
+      setError("Could not close out that booking.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function toggleBlock(timeSlot: string) {
     const existing = blocks.find((b) => b.timeSlot === timeSlot);
 
@@ -327,6 +368,8 @@ export function AdminConsole() {
                   onReject={() => review(booking, "rejected")}
                   onCancel={() => handleCancelApproved(booking)}
                   onRemove={() => handleRemove(booking)}
+                  onNoShow={() => handleNoShow(booking)}
+                  onComplete={() => handleComplete(booking)}
                 />
               ))}
             </ul>
@@ -521,6 +564,8 @@ function AdminBookingCard({
   onReject,
   onCancel,
   onRemove,
+  onNoShow,
+  onComplete,
 }: {
   booking: Booking;
   busy: boolean;
@@ -530,11 +575,16 @@ function AdminBookingCard({
   onReject: () => void;
   onCancel: () => void;
   onRemove: () => void;
+  onNoShow: () => void;
+  onComplete: () => void;
 }) {
   const facility = FACILITY_BY_ID[booking.facilityId];
   const Icon = ICONS[booking.facilityId];
   const range = formatTimeRange(booking.startTime, booking.endTime);
   const pending = booking.status === "pending";
+  const now = new Date();
+  const phase = bookingPhase(booking, now);
+  const noShowEligible = isNoShowEligible(booking, now);
 
   return (
     <li className="card p-5">
@@ -545,16 +595,26 @@ function AdminBookingCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-bold text-ink-900">
+            <h3 className="text-base font-semibold text-ink-900">
               {booking.fullName}
             </h3>
-            <StatusPill status={booking.status} size="sm" />
+            <PhasePill phase={phase} />
           </div>
 
           <p className="mt-0.5 text-sm text-ink-700">
             Grade {booking.grade}-{booking.section} &middot; {facility?.name} &middot;{" "}
             {formatLongDate(booking.date)} &middot; {range}
           </p>
+
+          {phase === "in_use" && <InUseBanner booking={booking} />}
+
+          {noShowEligible && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-pending/40 bg-pending-soft px-3 py-2 text-xs text-pending">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Started more than an hour ago and not closed out. If the student never
+              arrived, release the slot so someone else can book it.
+            </div>
+          )}
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
@@ -617,13 +677,37 @@ function AdminBookingCard({
               Decline
             </button>
           </>
-        ) : (
-          booking.status === "approved" && (
+        ) : booking.status === "approved" ? (
+          <>
             <button type="button" onClick={onCancel} disabled={busy} className="btn btn-outline">
               Cancel booking
             </button>
-          )
-        )}
+
+            {phase === "over" && (
+              <button
+                type="button"
+                onClick={onComplete}
+                disabled={busy}
+                className="btn btn-outline"
+              >
+                <Check className="h-4 w-4" />
+                Mark completed
+              </button>
+            )}
+
+            {noShowEligible && (
+              <button
+                type="button"
+                onClick={onNoShow}
+                disabled={busy}
+                className="btn border border-pending/50 bg-pending-soft text-pending hover:bg-pending hover:text-white"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                {busy ? "Releasing…" : "Mark no-show & release"}
+              </button>
+            )}
+          </>
+        ) : null}
 
         <button
           type="button"

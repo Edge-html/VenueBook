@@ -10,6 +10,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   type DocumentData,
@@ -17,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
+import { bookingInstants } from "./dates";
 import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
 import type {
   AppNotification,
@@ -307,6 +309,12 @@ export async function findRangeConflicts(
     }
   }
 
+  // A window that has already begun can never be booked.
+  const { startAt } = bookingInstants(date, startTime, endTime);
+  if (startAt && startAt.getTime() <= Date.now()) {
+    hard = "That time has already passed. Please pick a start time in the future.";
+  }
+
   return { hard, pending };
 }
 
@@ -330,16 +338,45 @@ export interface NewBookingInput {
 }
 
 export async function createBooking(input: NewBookingInput): Promise<string> {
-  const { startTime, endTime, ...rest } = input;
+  const { startTime, endTime, date, ...rest } = input;
+
+  // Absolute instants alongside the wall-clock strings: the security rules can
+  // compare these against `request.time`, which rules out a past booking even
+  // if someone bypasses the form.
+  const { startAt, endAt } = bookingInstants(date, startTime, endTime);
 
   const created = await addDoc(collection(db, COLLECTIONS.bookings), {
     ...rest,
+    date,
     startTime,
     endTime,
+    startAt: startAt ? Timestamp.fromDate(startAt) : null,
+    endAt: endAt ? Timestamp.fromDate(endAt) : null,
     status: "pending" satisfies BookingStatus,
     createdAt: serverTimestamp(),
   });
   return created.id;
+}
+
+/** The student closes out their own booking, or an admin does it for them. */
+export async function markBookingCompleted(
+  bookingId: string,
+  byAdmin = false,
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
+    status: "completed" satisfies BookingStatus,
+    completedAt: serverTimestamp(),
+    ...(byAdmin ? { reviewedAt: serverTimestamp() } : {}),
+  });
+}
+
+/** Admin releases a slot because the student never arrived. */
+export async function markBookingNoShow(bookingId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
+    status: "no_show" satisfies BookingStatus,
+    noShowAt: serverTimestamp(),
+    reviewedAt: serverTimestamp(),
+  });
 }
 
 export async function getBookingsForUser(uid: string): Promise<Booking[]> {
@@ -411,6 +448,7 @@ async function isRangeStillHeld(
 
     const data = d.data() as DocumentData;
     const status = data.status as BookingStatus;
+    // Completed, no-show, cancelled and declined bookings release the slot.
     if (status !== "approved" && status !== "pending") return false;
 
     const other = parseBooking(d.id, data);
@@ -585,6 +623,8 @@ function parseBooking(id: string, data: DocumentData): Booking {
     date: data.date as string,
     startTime,
     endTime,
+    startAt: (data.startAt as Timestamp | null) ?? null,
+    endAt: (data.endAt as Timestamp | null) ?? null,
     timeSlot: (data.timeSlot as string) ?? undefined,
     status: data.status as BookingStatus,
     userId: data.userId as string,
@@ -599,6 +639,8 @@ function parseBooking(id: string, data: DocumentData): Booking {
     reviewedAt: data.reviewedAt ?? null,
     reviewedBy: (data.reviewedBy as string | null) ?? null,
     adminNote: (data.adminNote as string | null) ?? null,
+    completedAt: (data.completedAt as Timestamp | null) ?? null,
+    noShowAt: (data.noShowAt as Timestamp | null) ?? null,
   };
 }
 

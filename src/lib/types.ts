@@ -2,7 +2,21 @@ import type { Timestamp } from "firebase/firestore";
 
 export type FacilityId = "gymnasium" | "avr";
 
-export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
+/**
+ * `completed` — the student finished using the venue and closed it out.
+ * `no_show`   — an admin released the slot because nobody arrived.
+ * Both free the slot for someone else.
+ */
+export type BookingStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled"
+  | "completed"
+  | "no_show";
+
+/** Statuses that still hold the slot. */
+export const ACTIVE_STATUSES: BookingStatus[] = ["pending", "approved"];
 
 export type Role = "student" | "admin";
 
@@ -24,6 +38,13 @@ export interface Booking {
   startTime: string;
   /** End time in 24-hour "HH:mm". Always after `startTime`. */
   endTime: string;
+  /**
+   * The same window as absolute instants. Kept alongside the strings so the
+   * security rules can reject a booking that starts in the past with a simple
+   * comparison against `request.time`.
+   */
+  startAt: Timestamp | null;
+  endAt: Timestamp | null;
   /** Legacy block id, only present on bookings created before free-form times. */
   timeSlot?: string;
   status: BookingStatus;
@@ -40,7 +61,25 @@ export interface Booking {
   reviewedAt?: Timestamp | null;
   reviewedBy?: string | null;
   adminNote?: string | null;
+  /** When the venue was closed out, by the student or an admin. */
+  completedAt?: Timestamp | null;
+  /** When an admin released the slot because nobody arrived. */
+  noShowAt?: Timestamp | null;
 }
+
+/**
+ * Everything the UI needs to describe where a booking stands right now,
+ * derived from the status and the clock rather than stored.
+ */
+export type BookingPhase =
+  | "upcoming"
+  | "pending"
+  | "in_use"
+  | "over"
+  | "completed"
+  | "no_show"
+  | "cancelled"
+  | "rejected";
 
 /** A slot the admin has taken offline (maintenance, school event, …). */
 export interface BlockedSlot {

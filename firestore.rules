@@ -40,19 +40,24 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow read: if isSignedIn();
 
+      // `startAt` is the same window as `startTime` expressed as an instant,
+      // which makes "no booking in the past" enforceable here rather than only
+      // in the form — the UI check is only a convenience.
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.status == 'pending';
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.startAt is timestamp
+                    && request.resource.data.startAt > request.time;
 
-      // A student may only cancel their own request. Everything that matters
-      // for approval (status, reviewer, venue, time) is admin-only.
+      // A student may only close out their own booking, or cancel it. Anything
+      // that matters for approval — the reviewer, the window, the venue — is
+      // admin-only, as is declaring a no-show.
       allow update: if isAdmin()
                     || (isSignedIn()
                         && resource.data.userId == request.auth.uid
-                        && resource.data.status in ['pending', 'approved']
                         && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['status'])
-                        && request.resource.data.status == 'cancelled');
+                            .hasOnly(['status', 'completedAt'])
+                        && request.resource.data.status in ['cancelled', 'completed']);
 
       allow delete: if isAdmin();
     }

@@ -33,11 +33,12 @@ import {
   validateIdPhoto,
 } from "@/lib/data";
 import { addDays, formatLongDate, todayKey, toDateKey } from "@/lib/dates";
+import { earliestBookableMinutes } from "@/lib/booking-phase";
 import {
   friendlyStorageError,
   withTimeout,
 } from "@/lib/load-errors";
-import { formatClock, formatTimeRange, hourLabel, toMinutes } from "@/lib/time";
+import { formatClock, formatTimeRange, fromMinutes, toMinutes } from "@/lib/time";
 import type { FacilityId } from "@/lib/types";
 
 const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
@@ -112,13 +113,20 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
   const startMin = startTime ? toMinutes(startTime) : null;
   const endMin = endTime ? toMinutes(endTime) : null;
 
+  // On today's date, anything that has already started is off limits.
+  const earliest = earliestBookableMinutes(date);
+  const minMinutes = earliest === null ? OPENING_MINUTES : Math.max(OPENING_MINUTES, earliest);
+  const maxMinutes = CLOSING_MINUTES;
+  const dateIsUnbookable = earliest === null;
+
   const rangeValid =
     startMin !== null &&
     endMin !== null &&
     endMin > startMin &&
     endMin - startMin >= MIN_DURATION_MINUTES &&
     startMin >= OPENING_MINUTES &&
-    endMin <= CLOSING_MINUTES;
+    endMin <= CLOSING_MINUTES &&
+    startMin >= minMinutes;
 
   // Re-check the range against Firestore whenever it settles on a new value.
   const rangeKey = rangeValid ? `${facilityId}:${date}:${startTime}:${endTime}` : "";
@@ -210,6 +218,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         next.endTime = `Bookings must be at least ${MIN_DURATION_MINUTES / 60} hour.`;
       } else if (startMin < OPENING_MINUTES || endMin > CLOSING_MINUTES) {
         next.startTime = `The venue is open ${formatClock(OPENING_MINUTES)} – ${formatClock(CLOSING_MINUTES)}.`;
+      } else if (startMin < minMinutes) {
+        next.startTime = `That time has already passed. The earliest start today is ${formatClock(minMinutes)}.`;
       }
     }
 
@@ -408,8 +418,9 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                   type="time"
                   step={900}
                   value={startTime}
-                  min={hourLabel(OPENING_MINUTES / 60)}
-                  max={hourLabel(CLOSING_MINUTES / 60)}
+                  min={fromMinutes(minMinutes)}
+                  max={fromMinutes(maxMinutes)}
+                  disabled={dateIsUnbookable}
                   onChange={(event) => {
                     setStartTime(event.target.value);
                     setFieldErrors((current) => ({ ...current, startTime: "" }));
@@ -430,8 +441,9 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                   type="time"
                   step={900}
                   value={endTime}
-                  min={hourLabel(OPENING_MINUTES / 60)}
-                  max={hourLabel(CLOSING_MINUTES / 60)}
+                  min={fromMinutes(minMinutes)}
+                  max={fromMinutes(maxMinutes)}
+                  disabled={dateIsUnbookable}
                   onChange={(event) => {
                     setEndTime(event.target.value);
                     setFieldErrors((current) => ({ ...current, endTime: "" }));

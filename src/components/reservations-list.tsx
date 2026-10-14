@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarPlus, Dumbbell, MonitorPlay, RefreshCw, XCircle } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Dumbbell, MonitorPlay, RefreshCw, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { StatusPill } from "@/components/status-pill";
+import { PhasePill, InUseBanner } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
+import { canMarkCompleted, bookingPhase } from "@/lib/booking-phase";
 import { FACILITY_BY_ID } from "@/lib/constants";
-import { cancelBooking, getBookingsForUser } from "@/lib/data";
+import { cancelBooking, getBookingsForUser, markBookingCompleted } from "@/lib/data";
 import { formatLongDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
@@ -46,6 +47,21 @@ export function ReservationsList() {
       );
     } catch {
       setError("Could not cancel that reservation. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleComplete(booking: Booking) {
+    if (!user) return;
+
+    setBusyId(booking.id);
+    setError(null);
+
+    try {
+      await markBookingCompleted(booking.id);
+    } catch {
+      setError("Could not close out that reservation. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -137,7 +153,9 @@ export function ReservationsList() {
               key={booking.id}
               booking={booking}
               onCancel={() => handleCancel(booking)}
+              onComplete={() => handleComplete(booking)}
               cancelling={busyId === booking.id}
+              userId={user?.uid ?? ""}
             />
           ))}
         </ul>
@@ -149,19 +167,27 @@ export function ReservationsList() {
 function ReservationCard({
   booking,
   onCancel,
+  onComplete,
   cancelling,
+  userId,
 }: {
   booking: Booking;
   onCancel: () => void;
+  onComplete: () => void;
   cancelling: boolean;
+  userId: string;
 }) {
   const facility = FACILITY_BY_ID[booking.facilityId];
   const Icon = ICONS[booking.facilityId];
   const range = formatTimeRange(booking.startTime, booking.endTime);
 
+  const now = new Date();
+  const phase = bookingPhase(booking, now);
+
   const canCancel =
     (booking.status === "pending" || booking.status === "approved") &&
     booking.date >= todayKey();
+  const canComplete = canMarkCompleted(booking, userId, now);
 
   return (
     <li className="card p-5">
@@ -172,15 +198,17 @@ function ReservationCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold text-ink-900">
+            <h2 className="text-base font-semibold text-ink-900">
               {facility?.name ?? booking.facilityId}
             </h2>
-            <StatusPill status={booking.status} size="sm" />
+            <PhasePill phase={phase} />
           </div>
 
           <p className="mt-1 text-sm text-ink-700">
             {formatLongDate(booking.date)} &middot; {range}
           </p>
+
+          {phase === "in_use" && <InUseBanner booking={booking} />}
 
           <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
@@ -212,17 +240,31 @@ function ReservationCard({
           )}
         </div>
 
-        {canCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={cancelling}
-            className="btn btn-ghost shrink-0 text-booked hover:bg-booked-soft"
-          >
-            <XCircle className="h-4 w-4" />
-            {cancelling ? "Cancelling…" : "Cancel"}
-          </button>
-        )}
+        <div className="flex shrink-0 flex-col gap-2">
+          {canComplete && (
+            <button
+              type="button"
+              onClick={onComplete}
+              disabled={cancelling}
+              className="btn btn-primary"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {cancelling ? "Saving…" : "Done using venue"}
+            </button>
+          )}
+
+          {canCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={cancelling}
+              className="btn btn-outline text-booked"
+            >
+              <XCircle className="h-4 w-4" />
+              {cancelling ? "Cancelling…" : "Cancel"}
+            </button>
+          )}
+        </div>
       </div>
     </li>
   );

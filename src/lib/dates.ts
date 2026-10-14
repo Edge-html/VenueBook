@@ -47,6 +47,28 @@ export function formatMonthTitle(date: Date): string {
   });
 }
 
+/**
+ * Combines a `YYYY-MM-DD` day with a `HH:mm` wall-clock time into a local
+ * `Date`. Reading it back with `getFullYear`/`getHours` returns the same values,
+ * which keeps the whole app anchored to the school's local time.
+ */
+export function atTime(dateKey: string, time: string): Date | null {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!year || !month || !day || !timeMatch) return null;
+
+  return new Date(year, month - 1, day, Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+}
+
+/** Absolute instants for a booking window, for rules-enforced timestamps. */
+export function bookingInstants(
+  dateKey: string,
+  startTime: string,
+  endTime: string,
+): { startAt: Date | null; endAt: Date | null } {
+  return { startAt: atTime(dateKey, startTime), endAt: atTime(dateKey, endTime) };
+}
+
 export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** Six-week grid starting on Sunday, so weekday columns line up. */

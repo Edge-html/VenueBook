@@ -3,6 +3,8 @@ import type { BookingStatus, SlotState } from "@/lib/types";
 const STATUS_STYLES: Record<BookingStatus, string> = {
   pending: "bg-pending-soft text-pending",
   approved: "bg-available-soft text-available",
+  completed: "bg-ink-200 text-ink-600",
+  no_show: "bg-booked-soft text-booked",
   rejected: "bg-booked-soft text-booked",
   cancelled: "bg-ink-200 text-ink-600",
 };
@@ -10,6 +12,8 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
 const STATUS_LABELS: Record<BookingStatus, string> = {
   pending: "Pending",
   approved: "Approved",
+  completed: "Completed",
+  no_show: "No show",
   rejected: "Rejected",
   cancelled: "Cancelled",
 };

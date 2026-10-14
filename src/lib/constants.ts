@@ -65,6 +65,18 @@ export const OPENING_HOURS_LABEL = `Open ${formatHour12(OPENING_MINUTES / 60)} â
 export const MIN_DURATION_MINUTES = 60;
 
 /**
+ * A booking must start strictly in the future, so a slot that has already
+ * begun cannot be requested. Enforced in the UI and again by the rules.
+ */
+export const BOOKING_CUTOFF_MINUTES = 0;
+
+/**
+ * Once this many minutes have passed since the start of an approved booking,
+ * an admin may release the slot as a no-show if the student never arrived.
+ */
+export const NO_SHOW_GRACE_MINUTES = 60;
+
+/**
  * Fixed one-hour blocks used for the availability display and for admin
  * closures. A booking may still span any number of them â€” see `startTime` and
  * `endTime` on a booking.
