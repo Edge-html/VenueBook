@@ -21,10 +21,15 @@ export default function LandingPage() {
     <>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+        {/* The photo bleeds to the card edge and takes exactly half of it. A
+            gradient off the seam fades paper into the image, so the full-bleed
+            reads as one surface instead of a photo dropped into a box. */}
         <div className="card overflow-hidden">
-          <div className="grid items-center gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-12 lg:p-12">
-            <div>
-              <span className="badge bg-brand-50 text-brand-700">KNCHS &middot; Koronadal</span>
+          <div className="grid lg:grid-cols-2">
+            <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-12">
+              <span className="badge self-start bg-brand-50 text-brand-700">
+                KNCHS &middot; Koronadal
+              </span>
 
               <h1 className="mt-5 text-4xl font-semibold leading-[1.11] tracking-[-0.05em] text-ink-900 sm:text-5xl">
                 Your Space,
@@ -42,12 +47,19 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
+            <div className="relative min-h-[240px] bg-ink-100 sm:min-h-[320px] lg:min-h-full">
               <SmartImage
                 sources={resolveImageSources(HERO_IMAGE.photo, HERO_IMAGE.placeholder)}
                 alt="The KNCHS main building"
                 loading="eager"
-                className="aspect-[4/3] w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+
+              {/* Stacked on mobile the seam runs across the top of the photo;
+                  side by side it runs down its left edge. */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/25 to-transparent lg:bg-gradient-to-r lg:from-white lg:via-white/30 lg:to-white/0"
               />
             </div>
           </div>
