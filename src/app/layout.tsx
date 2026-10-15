@@ -1,16 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Source_Sans_3 } from "next/font/google";
+import { Geist } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { Analytics } from "@/components/analytics";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -32,7 +31,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#632136",
+  themeColor: "#fafafa",
   width: "device-width",
   initialScale: 1,
 };
@@ -41,7 +40,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={sourceSans.variable}>
+    <html lang="en" className={geist.variable}>
       <body className="min-h-screen bg-ink-100 font-sans text-ink-800 antialiased">
         <AuthProvider>
           <Analytics />

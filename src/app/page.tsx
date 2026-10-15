@@ -20,33 +20,35 @@ export default function LandingPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
-        <div className="relative overflow-hidden rounded-lg bg-brand-800 shadow-sm">
-          <div className="absolute inset-0">
-            <SmartImage
-              sources={resolveImageSources(HERO_IMAGE.photo, HERO_IMAGE.placeholder)}
-              alt=""
-              loading="eager"
-              className="h-full w-full object-cover object-right opacity-70"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-900 via-brand-900/90 to-brand-800/40" />
-          </div>
+      <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+        <div className="card overflow-hidden">
+          <div className="grid items-center gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-12 lg:p-12">
+            <div>
+              <span className="badge bg-brand-50 text-brand-700">KNCHS &middot; Koronadal</span>
 
-          <div className="relative max-w-2xl px-6 py-12 sm:px-10 lg:py-16">
-            <span className="inline-flex items-center rounded bg-white/15 px-2 py-0.5 text-xs font-semibold tracking-wide text-white backdrop-blur">
-              KNCHS
-            </span>
+              <h1 className="mt-5 text-4xl font-semibold leading-[1.11] tracking-[-0.05em] text-ink-900 sm:text-5xl">
+                Your Space,
+                <br />
+                Your Schedule.
+              </h1>
 
-            <h1 className="mt-4 text-3xl font-bold leading-tight text-white sm:text-4xl">
-              Your Space, Your Schedule.
-            </h1>
+              <p className="mt-5 max-w-md text-base leading-relaxed text-ink-500">
+                Reserve the KNCHS Gymnasium or AVR in seconds. Check live availability,
+                send your request for approval, and follow it to the finish.
+              </p>
 
-            <p className="mt-4 max-w-md text-base text-brand-100">
-              Book the KNCHS Gymnasium or AVR with ease.
-            </p>
+              <div className="mt-8">
+                <HeroActions />
+              </div>
+            </div>
 
-            <div className="mt-7">
-              <HeroActions />
+            <div className="overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
+              <SmartImage
+                sources={resolveImageSources(HERO_IMAGE.photo, HERO_IMAGE.placeholder)}
+                alt="The KNCHS main building"
+                loading="eager"
+                className="aspect-[4/3] w-full object-cover"
+              />
             </div>
           </div>
         </div>
@@ -58,7 +60,7 @@ export default function LandingPage() {
       </Suspense>
 
       {/* Signed-in visitors get their four main functions here. */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <Suspense fallback={null}>
           <HomeAccountSections />
         </Suspense>
@@ -66,17 +68,17 @@ export default function LandingPage() {
 
       {/* Today's schedule sits where the upcoming reservations used to be —
           it is the more immediately useful of the two. */}
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
         <Suspense fallback={null}>
           <TodaysAvailability />
         </Suspense>
       </div>
 
       {/* ── Facilities + upcoming reservations ────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <div className="mb-5 flex items-center gap-3">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center gap-4">
           <h2 className="section-title">Our Facilities</h2>
-          <span className="h-px flex-1 bg-ink-200" />
+          <span className="section-rule flex-1" />
         </div>
 
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,17 +100,21 @@ export default function LandingPage() {
                 </div>
 
                 <div className="card-pad">
-                  <h3 className="text-base font-semibold text-ink-900">{facility.name}</h3>
+                  <h3 className="text-base font-semibold tracking-[-0.015em] text-ink-900">
+                    {facility.name}
+                  </h3>
 
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-600">
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-500">
                     <Users className="h-3.5 w-3.5" />
                     Capacity {facility.capacity}
                   </p>
-                  <p className="mt-2 text-sm text-ink-600">{facility.description}</p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-ink-600">
+                    {facility.description}
+                  </p>
 
                   <Link
                     href={`/availability?facility=${facility.id}`}
-                    className="btn btn-outline mt-4 w-full"
+                    className="btn btn-outline mt-5 w-full"
                   >
                     View Schedule
                     <ArrowRight className="h-4 w-4" />

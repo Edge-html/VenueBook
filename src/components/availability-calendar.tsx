@@ -115,30 +115,26 @@ export function AvailabilityCalendar() {
 
   return (
     <div className="animate-fade-up">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-brand-900">
-            Check Availability
-          </h1>
-          <p className="mt-1.5 text-ink-600">
+          <h1 className="page-title">Check Availability</h1>
+          <p className="page-lede">
             Green is free to book, red is taken, amber is awaiting approval.
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <ul className="flex flex-wrap items-center gap-4 text-xs font-medium text-ink-600">
-            {FULL_LEGEND.map((item) => (
-              <li key={item.label} className="flex items-center gap-1.5">
-                <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
-                {item.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ul className="flex flex-wrap items-center gap-4 text-xs font-medium text-ink-500">
+          {FULL_LEGEND.map((item) => (
+            <li key={item.label} className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
+              {item.label}
+            </li>
+          ))}
+        </ul>
       </header>
 
       {/* ── Facility switch ─────────────────────────────────── */}
-      <div className="mb-5 inline-flex rounded-md border border-ink-300 bg-white p-1">
+      <div className="mb-6 inline-flex rounded-lg bg-ink-100 p-1">
         {FACILITIES.map((option) => {
           const Icon = ICONS[option.id];
           const active = option.id === facilityId;
@@ -149,8 +145,10 @@ export function AvailabilityCalendar() {
               type="button"
               onClick={() => setFacilityId(option.id)}
               aria-pressed={active}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                active ? "bg-brand-700 text-white" : "text-ink-700 hover:bg-ink-100"
+              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-brand-700 text-white"
+                  : "text-ink-600 hover:bg-ink-200 hover:text-ink-900"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -162,19 +160,19 @@ export function AvailabilityCalendar() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* ── Month grid ───────────────────────────────────── */}
-        <section className="card p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="card p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between">
             <button
               type="button"
               onClick={() => shiftMonth(-1)}
               disabled={!canGoBack}
               aria-label="Previous month"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 text-brand-700 disabled:opacity-35"
+              className="grid h-9 w-9 place-items-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-35"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <h2 className="text-lg font-bold text-brand-900">
+            <h2 className="text-lg font-semibold tracking-[-0.015em] text-ink-900">
               {formatMonthTitle(month)}
             </h2>
 
@@ -183,7 +181,7 @@ export function AvailabilityCalendar() {
               onClick={() => shiftMonth(1)}
               disabled={!canGoForward}
               aria-label="Next month"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-ink-300 text-brand-700 disabled:opacity-35"
+              className="grid h-9 w-9 place-items-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:bg-ink-100 disabled:opacity-35"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -191,10 +189,7 @@ export function AvailabilityCalendar() {
 
           <div className="grid grid-cols-7 gap-1 text-center">
             {WEEKDAY_SHORT.map((day) => (
-              <div
-                key={day}
-                className="pb-1 text-[11px] font-bold uppercase tracking-wide text-ink-400"
-              >
+              <div key={day} className="eyebrow pb-2">
                 {day.charAt(0)}
               </div>
             ))}
@@ -214,7 +209,7 @@ export function AvailabilityCalendar() {
                   onClick={() => setSelected(key)}
                   aria-pressed={isSelected}
                   aria-label={formatLongDate(key)}
-                  className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md px-1 py-2 transition-colors ${
                     isSelected
                       ? "bg-brand-700 text-white"
                       : bookable
@@ -223,7 +218,7 @@ export function AvailabilityCalendar() {
                   }`}
                 >
                   <span
-                    className={`text-sm font-semibold ${
+                    className={`text-sm font-medium ${
                       inMonth
                         ? isSelected
                           ? "text-white"
@@ -259,27 +254,27 @@ export function AvailabilityCalendar() {
             })}
           </div>
 
-          <p className="mt-3 text-center text-xs text-ink-500">
+          <p className="mt-4 text-center text-xs text-ink-500">
             Each bar is one hour. Only the next {BOOKING_WINDOW_DAYS} days can be booked.
           </p>
         </section>
 
         {/* ── Selected day ─────────────────────────────────── */}
-        <section className="card h-fit p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-700 text-white">
+        <section className="card h-fit p-5 sm:p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
               <SelectedIcon className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="text-lg font-bold text-ink-900">
+              <h2 className="text-lg font-semibold tracking-[-0.015em] text-ink-900">
                 {facility.name}
               </h2>
-              <p className="text-xs text-ink-600">{formatLongDate(selected)}</p>
+              <p className="text-xs text-ink-500">{formatLongDate(selected)}</p>
             </div>
           </div>
 
           {error && (
-            <p className="mb-3 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
+            <p className="banner banner-error mb-4">
               {describeLoadError(new Error(error), "Could not load the schedule.")}
             </p>
           )}
@@ -289,7 +284,7 @@ export function AvailabilityCalendar() {
               {TIME_BLOCKS.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex h-10 items-center gap-3 rounded-lg bg-ink-200 px-3 text-xs font-medium text-ink-400"
+                  className="flex h-10 items-center gap-3 rounded-md bg-ink-100 px-3 text-xs font-medium text-ink-400"
                 >
                   <span className="w-24 shrink-0">{slot.label}</span>
                   <span>Unavailable</span>
@@ -300,7 +295,7 @@ export function AvailabilityCalendar() {
             <div className="space-y-2">
               {TIME_BLOCKS.map((slot) =>
                 loading || !selectedSlots ? (
-                  <div key={slot.id} className="h-10 animate-pulse rounded-lg bg-ink-200" />
+                  <div key={slot.id} className="h-10 animate-pulse rounded-md bg-ink-100" />
                 ) : (
                   <div key={slot.id} className="flex items-center gap-3">
                     <SlotChip
@@ -309,7 +304,7 @@ export function AvailabilityCalendar() {
                       title={describeMinutes(slot.startMin, slot.endMin)}
                       className="w-24 shrink-0"
                     />
-                    <p className="text-xs text-ink-600">
+                    <p className="text-xs text-ink-500">
                       {selectedSlots[slot.id] === "available"
                         ? "Open — book it now"
                         : selectedSlots[slot.id] === "booked"
@@ -326,7 +321,7 @@ export function AvailabilityCalendar() {
 
           <Link
             href={`/book?facility=${facilityId}&date=${selected}`}
-            className="btn btn-primary mt-5 w-full"
+            className="btn btn-primary mt-6 w-full"
           >
             Book this facility
           </Link>

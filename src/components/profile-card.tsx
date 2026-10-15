@@ -66,25 +66,25 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-brand-900">My Profile</h1>
-        <p className="mt-1.5 text-ink-600">
+      <header className="mb-8">
+        <h1 className="page-title">My Profile</h1>
+        <p className="page-lede">
           Keep your details current so admins can reach you about a request.
         </p>
       </header>
 
-      <div className="card p-6">
-        <div className="mb-6 flex items-center gap-4 border-b border-ink-200 pb-5">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-brand-700 text-xl font-bold text-white">
+      <div className="card p-6 sm:p-8">
+        <div className="mb-7 flex items-center gap-4 border-b border-ink-200 pb-6">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-700 text-xl font-semibold text-white">
             {(profile?.fullName ?? "?").charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold text-ink-900">
+            <p className="truncate text-lg font-semibold tracking-[-0.015em] text-ink-900">
               {profile?.fullName ?? "—"}
             </p>
             <span
-              className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                isAdmin ? "bg-ink-200 text-brand-600" : "bg-brand-50 text-brand-700"
+              className={`badge mt-2 ${
+                isAdmin ? "bg-ink-200 text-ink-700" : "bg-brand-50 text-brand-700"
               }`}
             >
               {isAdmin ? <ShieldCheck className="h-3 w-3" /> : <UserRound className="h-3 w-3" />}
@@ -93,25 +93,21 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
           </div>
         </div>
 
-        <div className="mb-5 space-y-2">
-          <p className="flex items-center gap-2 text-sm text-ink-700">
+        <div className="mb-6 space-y-2">
+          <p className="flex items-center gap-2.5 text-sm text-ink-700">
             <Mail className="h-4 w-4 text-ink-400" />
             {profile?.email ?? user?.email ?? "—"}
           </p>
-          <p className="flex items-center gap-2 text-sm text-ink-700">
+          <p className="flex items-center gap-2.5 text-sm text-ink-700">
             <Phone className="h-4 w-4 text-ink-400" />
             {profile?.phone ? formatPhone(profile.phone) : "No phone number on file"}
           </p>
         </div>
 
-        <form onSubmit={save} className="space-y-4">
-          {error && (
-            <p className="rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
-              {error}
-            </p>
-          )}
+        <form onSubmit={save} className="space-y-5">
+          {error && <p className="banner banner-error">{error}</p>}
           {message && (
-            <p className="flex items-center gap-1.5 rounded-lg border border-available/30 bg-available-soft px-3 py-2.5 text-sm text-available">
+            <p className="banner banner-notice flex items-center gap-1.5">
               <Check className="h-4 w-4" /> {message}
             </p>
           )}
@@ -139,22 +135,18 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
               placeholder="+639171234567"
               className="field"
             />
-            <p className="mt-1 text-xs text-ink-500">
+            <p className="mt-2 text-xs text-ink-500">
               Stored in international format so you can sign in with it. Currently{" "}
               {phone ? formatPhone(phone) : "—"}.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-5">
             <button type="submit" disabled={saving} className="btn btn-primary">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Saving…" : "Save changes"}
             </button>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="btn btn-ghost text-booked hover:bg-booked-soft"
-            >
+            <button type="button" onClick={handleSignOut} className="btn btn-danger">
               <LogOut className="h-4 w-4" />
               Sign out
             </button>

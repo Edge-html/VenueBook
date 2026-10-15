@@ -27,8 +27,8 @@ export function StatusPill({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${STATUS_STYLES[status]} ${
-        size === "sm" ? "px-2.5 py-0.5 text-[11px]" : "px-3 py-1 text-xs"
+      className={`badge font-medium ${STATUS_STYLES[status]} ${
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
       }`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -66,7 +66,7 @@ export function SlotChip({
   return (
     <span
       title={title ?? SLOT_LABELS[state]}
-      className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold ${SLOT_STYLES[state]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-medium ${SLOT_STYLES[state]} ${className}`}
     >
       {label}
     </span>

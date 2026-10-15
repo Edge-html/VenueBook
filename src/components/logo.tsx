@@ -19,28 +19,25 @@ export function Crest({ className = "h-11 w-11" }: { className?: string }) {
 
 /** Header wordmark: crest plus the single word "VenueBook". */
 export function Logo({
-  variant = "dark",
   className = "",
+  showWordmark = true,
 }: {
-  variant?: "dark" | "light";
   className?: string;
+  /** Drop the wordmark where the crest alone should carry the brand. */
+  showWordmark?: boolean;
 }) {
-  const light = variant === "light";
-
   return (
     <Link
       href="/"
       className={`flex items-center gap-2.5 ${className}`}
       aria-label="VenueBook home"
     >
-      <Crest className="h-10 w-10 shrink-0" />
-      <span
-        className={`text-lg font-bold leading-none tracking-tight ${
-          light ? "text-white" : "text-brand-800"
-        }`}
-      >
-        VenueBook
-      </span>
+      <Crest className="h-9 w-9 shrink-0" />
+      {showWordmark && (
+        <span className="text-lg font-semibold leading-none tracking-[-0.025em] text-brand-800">
+          VenueBook
+        </span>
+      )}
     </Link>
   );
 }

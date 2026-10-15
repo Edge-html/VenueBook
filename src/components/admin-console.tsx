@@ -264,34 +264,28 @@ export function AdminConsole() {
 
   return (
     <div className="animate-fade-up">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="flex items-center gap-1.5 text-sm font-medium text-brand-600">
-            <ShieldCheck className="h-4 w-4" />
-            Administrator
-          </p>
-          <h1 className="mt-1 text-3xl font-bold text-brand-900">Admin Console</h1>
-          <p className="mt-1.5 text-ink-600">
-            Review student requests and control the facility schedule. Updates arrive live.
-          </p>
-        </div>
+      <header className="mb-8">
+        <p className="eyebrow flex items-center gap-1.5">
+          <ShieldCheck className="h-3.5 w-3.5 text-brand-700" />
+          Administrator
+        </p>
+        <h1 className="page-title mt-2">Admin Console</h1>
+        <p className="page-lede">
+          Review student requests and control the facility schedule. Updates arrive live.
+        </p>
       </header>
 
       {/* ── Stats ───────────────────────────────────────────── */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Stat label="Awaiting review" value={pendingCount} tone="text-pending" />
         <Stat label="Approved today" value={todayCount} tone="text-available" />
         <Stat label="Total requests" value={(bookings ?? []).length} tone="text-brand-700" />
       </div>
 
-      {error && (
-        <p className="mb-4 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm text-booked">
-          {error}
-        </p>
-      )}
+      {error && <p className="banner banner-error mb-5">{error}</p>}
 
       {/* ── Tabs ────────────────────────────────────────────── */}
-      <div className="mb-5 inline-flex rounded-md border border-ink-300 bg-white p-1">
+      <div className="mb-6 inline-flex rounded-lg bg-ink-100 p-1">
         {(
           [
             { id: "requests" as const, label: "Booking requests" },
@@ -303,8 +297,10 @@ export function AdminConsole() {
             type="button"
             onClick={() => setTab(item.id)}
             aria-pressed={tab === item.id}
-            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
-              tab === item.id ? "bg-brand-700 text-white" : "text-ink-700 hover:bg-ink-100"
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              tab === item.id
+                ? "bg-brand-700 text-white"
+                : "text-ink-600 hover:bg-ink-200 hover:text-ink-900"
             }`}
           >
             {item.label}
@@ -314,17 +310,17 @@ export function AdminConsole() {
 
       {tab === "requests" ? (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-5 flex flex-wrap gap-2">
             {STATUS_FILTERS.map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setStatusFilter(value)}
                 aria-pressed={statusFilter === value}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                className={`badge px-3 py-1.5 transition-colors ${
                   statusFilter === value
-                    ? "border-brand-700 bg-brand-700 text-white"
-                    : "border-ink-300 bg-white text-ink-700 hover:bg-ink-100"
+                    ? "bg-brand-700 text-white"
+                    : "border border-ink-300 bg-white text-ink-600 hover:border-ink-400 hover:text-ink-900"
                 }`}
               >
                 {FILTER_LABELS[value]}
@@ -333,22 +329,22 @@ export function AdminConsole() {
           </div>
 
           {loadingBookings && !bookings.length ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-32 animate-pulse rounded-lg bg-ink-200" />
+                <div key={index} className="h-32 animate-pulse rounded-xl bg-ink-200" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="card px-6 py-14 text-center">
-              <p className="text-base font-semibold text-brand-900">
+            <div className="card px-6 py-16 text-center">
+              <p className="text-base font-semibold tracking-[-0.015em] text-ink-900">
                 {statusFilter === "all" ? "No bookings yet" : `No ${FILTER_LABELS[statusFilter].toLowerCase()} bookings`}
               </p>
-              <p className="mt-1.5 text-sm text-ink-600">
+              <p className="mt-2 text-sm text-ink-500">
                 Student requests will show up here as soon as they are sent.
               </p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {filtered.map((booking) => (
                 <AdminBookingCard
                   key={booking.id}
@@ -370,8 +366,8 @@ export function AdminConsole() {
           )}
         </>
       ) : (
-        <section className="card p-5">
-          <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <section className="card p-6">
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="schedFacility" className="field-label">
                 Facility
@@ -404,12 +400,12 @@ export function AdminConsole() {
             </div>
           </div>
 
-          <p className="mb-4 text-sm text-ink-600">
+          <p className="mb-5 text-sm leading-relaxed text-ink-500">
             Closed slots are hidden from students on the booking form and shown grey in the
             calendar.
           </p>
 
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="mb-5 flex flex-wrap items-center gap-2">
             <input
               value={blockReason}
               onChange={(event) => setBlockReason(event.target.value)}
@@ -427,14 +423,14 @@ export function AdminConsole() {
                 <li
                   key={slot.id}
                   title={describeMinutes(slot.startMin, slot.endMin)}
-                  className="flex flex-wrap items-center gap-3 rounded-md border border-ink-200 bg-ink-50 p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-lg bg-ink-50 p-3"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-brand-700" />
-                  <span className="w-16 shrink-0 text-sm font-semibold text-ink-800">
+                  <span className="w-16 shrink-0 text-sm font-medium text-ink-800">
                     {slot.label}
                   </span>
 
-                  <span className="min-w-0 flex-1 text-xs text-ink-600">
+                  <span className="min-w-0 flex-1 text-xs text-ink-500">
                     {block ? (
                       <>
                         Closed &middot; <span className="italic">{block.reason}</span>
@@ -448,11 +444,7 @@ export function AdminConsole() {
                     type="button"
                     onClick={() => toggleBlock(slot.id)}
                     disabled={loadingBlocks}
-                    className={`btn shrink-0 text-xs ${
-                      block
-                        ? "btn-outline"
-                        : "bg-booked-soft text-booked hover:bg-booked hover:text-white"
-                    }`}
+                    className={`btn shrink-0 text-xs ${block ? "btn-outline" : "btn-danger"}`}
                   >
                     {block ? (
                       <>
@@ -469,7 +461,7 @@ export function AdminConsole() {
             })}
           </ul>
 
-          <p className="mt-4 flex items-center gap-1.5 text-xs text-ink-500">
+          <p className="mt-5 flex items-center gap-1.5 text-xs text-ink-500">
             <CalendarRange className="h-3.5 w-3.5" />
             Students can book up to {BOOKING_WINDOW_DAYS} days ahead.
           </p>
@@ -479,7 +471,7 @@ export function AdminConsole() {
       {toast && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up rounded-md bg-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+          className="animate-fade-up fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink-900 px-4 py-2.5 text-sm font-medium text-white shadow-lift"
         >
           {toast}
         </div>
@@ -488,11 +480,15 @@ export function AdminConsole() {
   );
 }
 
+/**
+ * Stat block: typographic scale only, no card chrome beyond the container the
+ * caller may add. The number carries it; the label just names it.
+ */
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="card p-4">
-      <p className={`text-3xl font-bold ${tone}`}>{value}</p>
-      <p className="mt-0.5 text-xs font-medium text-ink-600">{label}</p>
+    <div className="card p-5">
+      <p className={`text-4xl font-semibold tracking-[-0.03em] ${tone}`}>{value}</p>
+      <p className="eyebrow mt-2">{label}</p>
     </div>
   );
 }
@@ -533,17 +529,17 @@ function IdPhotoThumbnail({ photoId }: { photoId: string }) {
   }
 
   return (
-    <div className="mt-3">
-      <p className="mb-1 text-xs font-medium text-ink-600">Student ID</p>
+    <div className="mt-4">
+      <p className="mb-1.5 text-xs font-medium text-ink-500">Student ID</p>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt="Uploaded student ID"
-          className="h-28 w-44 rounded-lg border border-ink-300 object-cover"
+          className="h-28 w-44 rounded-lg border border-ink-200 object-cover"
         />
       ) : (
-        <div className="h-28 w-44 animate-pulse rounded-lg bg-ink-200" />
+        <div className="h-28 w-44 animate-pulse rounded-lg bg-ink-100" />
       )}
     </div>
   );
@@ -581,21 +577,21 @@ function AdminBookingCard({
   const noShowEligible = isNoShowEligible(booking, now);
 
   return (
-    <li className="card p-5">
+    <li className="card p-5 sm:p-6">
       <div className="flex flex-wrap items-start gap-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-brand-700 text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
           <Icon className="h-6 w-6" />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-ink-900">
+            <h3 className="text-base font-semibold tracking-[-0.015em] text-ink-900">
               {booking.fullName}
             </h3>
             <PhasePill phase={phase} />
           </div>
 
-          <p className="mt-0.5 text-sm text-ink-700">
+          <p className="mt-1 text-sm text-ink-600">
             Grade {booking.grade}-{booking.section} &middot; {facility?.name} &middot;{" "}
             {formatLongDate(booking.date)} &middot; {range}
           </p>
@@ -603,31 +599,31 @@ function AdminBookingCard({
           {phase === "in_use" && <InUseBanner booking={booking} />}
 
           {noShowEligible && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-pending/40 bg-pending-soft px-3 py-2 text-xs text-pending">
+            <div className="banner banner-warning mt-4 flex flex-wrap items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               Started more than an hour ago and not closed out. If the student never
               arrived, release the slot so someone else can book it.
             </div>
           )}
 
-          <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          <dl className="mt-4 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2">
             <div className="flex gap-2">
-              <dt className="text-ink-500">Purpose</dt>
+              <dt className="shrink-0 text-ink-500">Purpose</dt>
               <dd className="font-medium text-ink-800">{booking.purpose}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-ink-500">Attendees</dt>
+              <dt className="shrink-0 text-ink-500">Attendees</dt>
               <dd className="font-medium text-ink-800">{booking.attendees}</dd>
             </div>
             {booking.notes && (
               <div className="flex gap-2 sm:col-span-2">
-                <dt className="text-ink-500">Notes</dt>
+                <dt className="shrink-0 text-ink-500">Notes</dt>
                 <dd className="font-medium text-ink-800">{booking.notes}</dd>
               </div>
             )}
             {booking.reviewedBy && (
               <div className="flex gap-2 sm:col-span-2">
-                <dt className="text-ink-500">Reviewed by</dt>
+                <dt className="shrink-0 text-ink-500">Reviewed by</dt>
                 <dd className="font-medium text-ink-800">{booking.reviewedBy}</dd>
               </div>
             )}
@@ -638,7 +634,7 @@ function AdminBookingCard({
           )}
 
           {pending && (
-            <div className="mt-4 border-t border-ink-200 pt-4">
+            <div className="mt-5 border-t border-ink-200 pt-5">
               <label htmlFor={`note-${booking.id}`} className="field-label">
                 Note to the student <span className="font-normal text-ink-500">(optional)</span>
               </label>
@@ -654,36 +650,26 @@ function AdminBookingCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-200 pt-4">
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-ink-200 pt-5">
         {pending ? (
           <>
             <button type="button" onClick={onApprove} disabled={busy} className="btn btn-primary">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Approve
             </button>
-            <button
-              type="button"
-              onClick={onReject}
-              disabled={busy}
-              className="btn bg-booked-soft text-booked hover:bg-booked hover:text-white"
-            >
+            <button type="button" onClick={onReject} disabled={busy} className="btn btn-danger">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
               Decline
             </button>
           </>
         ) : booking.status === "approved" ? (
           <>
-            <button type="button" onClick={onCancel} disabled={busy} className="btn btn-outline">
+            <button type="button" onClick={onCancel} disabled={busy} className="btn btn-danger">
               Cancel booking
             </button>
 
             {phase === "over" && (
-              <button
-                type="button"
-                onClick={onComplete}
-                disabled={busy}
-                className="btn btn-outline"
-              >
+              <button type="button" onClick={onComplete} disabled={busy} className="btn btn-outline">
                 <Check className="h-4 w-4" />
                 Mark completed
               </button>
@@ -694,7 +680,7 @@ function AdminBookingCard({
                 type="button"
                 onClick={onNoShow}
                 disabled={busy}
-                className="btn border border-pending/50 bg-pending-soft text-pending hover:bg-pending hover:text-white"
+                className="btn btn-warning"
               >
                 <AlertTriangle className="h-4 w-4" />
                 {busy ? "Releasing…" : "Mark no-show & release"}
@@ -707,7 +693,7 @@ function AdminBookingCard({
           type="button"
           onClick={onRemove}
           disabled={busy}
-          className="btn btn-ghost ml-auto text-ink-500 hover:bg-ink-100 hover:text-booked"
+          className="btn btn-ghost ml-auto text-ink-500 hover:text-booked"
         >
           <Trash2 className="h-4 w-4" />
           Delete

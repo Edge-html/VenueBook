@@ -14,7 +14,7 @@ export function HeroActions() {
 
   if (initialising || !user) {
     return (
-      <div className="mt-7 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <Link href="/signup" className="btn btn-primary">
           Create Account
         </Link>
@@ -29,11 +29,14 @@ export function HeroActions() {
   const firstName = (profile?.fullName ?? "").split(" ")[0] || "there";
 
   return (
-    <div className="mt-7 border-l-2 border-white/30 pl-4">
-      <p className="text-sm font-medium text-brand-200">Welcome back, {firstName}</p>
-      <p className="mt-0.5 text-xl font-semibold text-white sm:text-2xl">
+    <div className="border-l-2 border-brand-200 pl-5">
+      <p className="eyebrow">Welcome back, {firstName}</p>
+      <p className="mt-2 text-xl font-semibold tracking-[-0.025em] text-ink-900">
         What would you like to book today?
       </p>
+      <Link href="/book" className="btn btn-primary mt-5">
+        Start a booking
+      </Link>
     </div>
   );
 }

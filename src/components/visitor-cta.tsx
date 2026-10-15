@@ -15,14 +15,14 @@ export function VisitorCta() {
   if (initialising || user) return null;
 
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6">
-      <div className="flex flex-col items-start gap-4 rounded-lg border border-ink-200 bg-white px-6 py-6 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+      <div className="card flex flex-col items-start gap-5 px-6 py-7 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+          <h2 className="flex items-center gap-2 text-base font-semibold tracking-[-0.015em] text-ink-900">
             <MapPin className="h-4 w-4 text-brand-700" />
             Ready to reserve a space?
           </h2>
-          <p className="mt-1 text-sm text-ink-600">
+          <p className="mt-1.5 text-sm text-ink-500">
             Create an account and send your request in under a minute.
           </p>
         </div>

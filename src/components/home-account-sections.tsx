@@ -57,7 +57,7 @@ export function HomeAccountSections() {
 
   if (isAdmin) {
     return (
-      <div className="border-t border-ink-300 pt-8">
+      <div className="pt-8">
         <AdminConsole />
       </div>
     );
@@ -92,7 +92,8 @@ function StudentSections() {
   );
 
   const unread = useMemo(
-    () => (notificationsLive.docs ?? []).filter((doc) => !doc.data().read).length,
+    () =>
+      (notificationsLive.docs ?? []).filter((doc) => !doc.data().read).length,
     [notificationsLive.docs],
   );
 
@@ -102,35 +103,38 @@ function StudentSections() {
   };
 
   return (
-    <div className="animate-fade-up space-y-4">
+    <div className="animate-fade-up mt-4 space-y-4">
       {pending > 0 && (
-        <p className="rounded-md border border-pending/40 bg-pending-soft px-3 py-2 text-sm font-medium text-pending">
+        <div className="banner banner-warning flex items-center gap-2 font-medium">
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
           You have {pending} request{pending > 1 ? "s" : ""} waiting for review.
-        </p>
+        </div>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
           <Link
             key={href}
             href={href}
-            className="card flex items-center gap-3 p-4 transition-colors hover:border-ink-400"
+            className="card group flex items-center gap-4 p-5 transition-colors hover:border-brand-300"
           >
-            <Icon className="h-5 w-5 shrink-0 text-brand-700" />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-100">
+              <Icon className="h-5 w-5" />
+            </span>
 
             <div className="min-w-0">
-              <h3 className="flex items-center gap-2 text-[0.9375rem] font-semibold text-ink-900">
+              <h3 className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em] text-ink-900">
                 {title}
                 {badges[href] > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-700 px-1.5 text-[11px] font-bold text-white">
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-700 px-1.5 text-[11px] font-semibold text-white">
                     {badges[href]}
                   </span>
                 )}
               </h3>
-              <p className="mt-0.5 text-sm text-ink-600">{description}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-ink-500">{description}</p>
             </div>
 
-            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink-400" />
+            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink-400 transition-colors group-hover:text-brand-700" />
           </Link>
         ))}
       </section>

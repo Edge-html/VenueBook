@@ -56,10 +56,10 @@ export function BookingForm() {
   if (!profile) {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
-        <p className="text-lg font-bold text-brand-900">
+        <p className="text-xl font-semibold tracking-[-0.015em] text-ink-900">
           We could not load your account
         </p>
-        <p className="mt-1.5 text-sm text-ink-600">
+        <p className="mt-2 text-sm leading-relaxed text-ink-500">
           Please sign out and sign in again. If it keeps happening, an administrator needs to
           deploy the database rules.
         </p>
@@ -296,10 +296,10 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-available-soft text-available">
           <CheckCircle2 className="h-8 w-8" />
         </span>
-        <h1 className="mt-5 text-2xl font-bold text-brand-900">
+        <h1 className="mt-6 text-3xl font-semibold tracking-[-0.025em] text-ink-900">
           Request sent!
         </h1>
-        <p className="mt-2 text-ink-600">
+        <p className="mx-auto mt-3 max-w-md text-ink-600">
           Your booking for{" "}
           <span className="font-semibold text-ink-900">{FACILITY_BY_ID[facilityId]?.name}</span>{" "}
           on <span className="font-semibold text-ink-900">{formatLongDate(date)}</span> (
@@ -309,7 +309,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           We&rsquo;ll notify you as soon as an admin reviews it.
         </p>
 
-        <div className="mt-7 flex flex-wrap justify-center gap-2">
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
           <Link href="/reservations" className="btn btn-primary">
             View my reservations
           </Link>
@@ -333,15 +333,15 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
 
   return (
     <div className="animate-fade-up mx-auto max-w-3xl">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-brand-900">Book a Facility</h1>
-        <p className="mt-1.5 text-ink-600">
+      <header className="mb-8">
+        <h1 className="page-title">Book a Facility</h1>
+        <p className="page-lede">
           Pick a venue and an open slot, attach your school ID, then send it for approval.
         </p>
       </header>
 
       {/* ── Facility picker ─────────────────────────────────── */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {FACILITIES.map((facility) => {
           const Icon = ICONS[facility.id];
           const active = facility.id === facilityId;
@@ -352,24 +352,24 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               type="button"
               onClick={() => changeFacility(facility.id)}
               aria-pressed={active}
-              className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors ${
+              className={`flex items-center gap-3.5 rounded-xl border p-4 text-left transition-colors ${
                 active
-                  ? "border-brand-700 bg-brand-50"
-                  : "border-ink-300 bg-white hover:border-brand-200"
+                  ? "border-brand-300 bg-brand-50"
+                  : "border-ink-200 bg-white hover:border-ink-300"
               }`}
             >
               <span
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-md ${
-                  active ? "bg-brand-700 text-white" : "bg-ink-200 text-brand-700"
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${
+                  active ? "bg-brand-700 text-white" : "bg-ink-100 text-ink-500"
                 }`}
               >
                 <Icon className="h-5 w-5" />
               </span>
               <span className="min-w-0">
-                <span className="block text-base font-bold text-ink-900">
+                <span className="block text-base font-semibold tracking-[-0.015em] text-ink-900">
                   {facility.name}
                 </span>
-                <span className="block text-xs text-ink-600">
+                <span className="mt-0.5 block text-xs text-ink-500">
                   Capacity {facility.capacity} &middot; {facility.description}
                 </span>
               </span>
@@ -379,21 +379,18 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         })}
       </div>
 
-      <form onSubmit={handleSubmit} className="card space-y-6 p-6" noValidate>
+      <form onSubmit={handleSubmit} className="card space-y-7 p-6 sm:p-8" noValidate>
         {error && (
-          <p
-            role="alert"
-            className="animate-shake rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm font-medium text-booked"
-          >
+          <p role="alert" className="banner banner-error animate-shake font-medium">
             {error}
           </p>
         )}
 
         {/* ── Date + time ──────────────────────────────────── */}
         <fieldset>
-          <legend className="field-label mb-2">When do you need it?</legend>
+          <legend className="field-label mb-2.5">When do you need it?</legend>
 
-          <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <input
               type="date"
               value={date}
@@ -407,7 +404,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           </div>
 
           {/* Free-form start and end, to the minute. */}
-          <div className="mb-4 grid gap-3 sm:grid-cols-[auto_1fr]">
+          <div className="mb-5 grid gap-3 sm:grid-cols-[auto_1fr]">
             <div className="flex items-center gap-2">
               <div>
                 <label htmlFor="startTime" className="field-label">
@@ -454,7 +451,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               </div>
             </div>
 
-            <p className="self-end pb-2 text-xs text-ink-500 sm:pb-3">
+            <p className="self-end pb-2 text-xs leading-relaxed text-ink-500 sm:pb-3">
               Any duration you like, from{" "}
               {formatClock(OPENING_MINUTES)} to {formatClock(CLOSING_MINUTES)}.
               {!startTime && !endTime && (
@@ -473,16 +470,10 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             <p className="mb-2 text-xs font-medium text-booked">{fieldErrors.endTime}</p>
           )}
 
-          {activeConflict && (
-            <p className="mb-2 rounded-lg border border-booked/30 bg-booked-soft px-3 py-2.5 text-sm font-medium text-booked">
-              {activeConflict}
-            </p>
-          )}
+          {activeConflict && <p className="banner banner-error mb-2 font-medium">{activeConflict}</p>}
 
           {activeWarning && (
-            <p className="mb-2 rounded-lg border border-pending/40 bg-pending-soft px-3 py-2.5 text-sm font-medium text-pending">
-              {activeWarning}
-            </p>
+            <p className="banner banner-warning mb-2 font-medium">{activeWarning}</p>
           )}
 
           {checking && (
@@ -495,7 +486,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           {!activeConflict && !activeWarning && startTime && endTime && (
             <p className="text-xs text-ink-500">
               {formatTimeRange(startTime, endTime)} looks free. You can still{" "}
-              <Link href={`/availability?facility=${facilityId}&date=${date}`} className="font-semibold text-brand-700 hover:underline">
+              <Link href={`/availability?facility=${facilityId}&date=${date}`} className="link">
                 check the full schedule
               </Link>
               .
@@ -504,7 +495,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
         </fieldset>
 
         {/* ── Details ──────────────────────────────────────── */}
-        <fieldset className="grid gap-4 sm:grid-cols-2">
+        <fieldset className="grid gap-5 sm:grid-cols-2">
           <legend className="sr-only">Your details</legend>
 
           <div className="sm:col-span-2">
@@ -520,7 +511,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               className="field"
             />
             {fieldErrors.fullName && (
-              <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.fullName}</p>
+              <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.fullName}</p>
             )}
           </div>
 
@@ -543,7 +534,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               ))}
             </select>
             {fieldErrors.grade && (
-              <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.grade}</p>
+              <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.grade}</p>
             )}
           </div>
 
@@ -563,7 +554,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               className="field"
             />
             {fieldErrors.section && (
-              <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.section}</p>
+              <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.section}</p>
             )}
           </div>
 
@@ -582,7 +573,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               className="field"
             />
             {fieldErrors.attendees && (
-              <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.attendees}</p>
+              <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.attendees}</p>
             )}
           </div>
 
@@ -599,7 +590,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
               className="field"
             />
             {fieldErrors.purpose && (
-              <p className="mt-1 text-xs font-medium text-booked">{fieldErrors.purpose}</p>
+              <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.purpose}</p>
             )}
           </div>
 
@@ -625,12 +616,12 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           </span>
 
           {preview ? (
-            <div className="flex items-center gap-4 rounded-md border border-ink-300 bg-ink-50 p-3">
+            <div className="flex items-center gap-4 rounded-lg bg-ink-100 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={preview}
                 alt="Selected school ID preview"
-                className="h-20 w-32 rounded-lg border border-ink-300 object-cover"
+                className="h-20 w-32 rounded-md object-cover"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink-800">{file?.name}</p>
@@ -642,7 +633,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                 type="button"
                 onClick={() => handleFile(null)}
                 aria-label="Remove selected photo"
-                className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-ink-200 hover:text-booked"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-200 hover:text-booked"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -650,13 +641,13 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           ) : (
             <label
               htmlFor="idPhoto"
-              className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-ink-300 bg-ink-50 px-4 py-7 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40"
+              className="flex cursor-pointer flex-col items-center justify-center rounded-lg bg-ink-100 px-4 py-8 text-center transition-colors hover:bg-ink-200"
             >
-              <ImageUp className="h-7 w-7 text-brand-600" />
-              <span className="mt-2 text-sm font-semibold text-ink-800">
+              <ImageUp className="h-7 w-7 text-brand-700" />
+              <span className="mt-2.5 text-sm font-semibold text-ink-800">
                 Tap to upload your school ID
               </span>
-              <span className="mt-0.5 text-xs text-ink-500">
+              <span className="mt-1 text-xs text-ink-500">
                 JPG, PNG or WEBP &middot; max {Math.round(MAX_ID_PHOTO_BYTES / 1024)} KB
               </span>
               <input
@@ -672,11 +663,11 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
           )}
 
           {fieldErrors.file && (
-            <p className="mt-1.5 text-xs font-medium text-booked">{fieldErrors.file}</p>
+            <p className="mt-2 text-xs font-medium text-booked">{fieldErrors.file}</p>
           )}
 
           {photoUploadFailed && (
-            <div className="mt-3 rounded-lg border border-pending/40 bg-pending-soft px-3 py-3 text-sm text-pending">
+            <div className="banner banner-warning mt-4">
               <p className="font-medium">Your ID photo did not upload, but you can still submit.</p>
               <p className="mt-1 text-xs font-medium text-ink-500">
                 An admin can request the photo later. If this keeps happening, ask them to
@@ -699,7 +690,7 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
                 setSkipPhoto(true);
                 setError(null);
               }}
-              className="mt-2 text-xs font-semibold text-brand-700 hover:underline"
+              className="link mt-2.5 text-xs"
             >
               Skip the photo and submit without it
             </button>

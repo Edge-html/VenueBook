@@ -25,9 +25,9 @@ export function PhasePill({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-semibold ${
-        PHASE_STYLES[phase]
-      } ${size === "sm" ? "px-2.5 py-0.5 text-[11px]" : "px-3 py-1 text-xs"}`}
+      className={`badge font-medium ${PHASE_STYLES[phase]} ${
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
+      }`}
     >
       {live && (
         <span className="relative flex h-1.5 w-1.5">
@@ -43,7 +43,7 @@ export function PhasePill({
 /** Compact strip shown under a booking that is running right now. */
 export function InUseBanner({ booking }: { booking: Booking }) {
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-md bg-brand-700 px-3 py-2 text-xs font-medium text-white">
+    <div className="mt-3 flex items-center gap-2 rounded-lg bg-brand-700 px-3 py-2 text-xs font-medium text-white">
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />

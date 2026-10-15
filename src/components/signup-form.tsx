@@ -92,7 +92,7 @@ function SignUpFields() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <FormError message={error} />
 
         <Field
@@ -146,13 +146,13 @@ function SignUpFields() {
               onChange={(event) => edit("password", setPassword)(event.target.value)}
               placeholder="At least 8 characters"
               aria-invalid={Boolean(fieldErrors.password)}
-              className="field pr-11"
+              className="field pr-14"
             />
             <button
               type="button"
               onClick={() => setShowPassword((show) => !show)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-500 hover:text-brand-700"
+              className="absolute inset-y-0 right-0 grid w-14 place-items-center text-ink-400 transition-colors hover:text-brand-700"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -171,7 +171,7 @@ function SignUpFields() {
           error={fieldErrors.confirm}
         />
 
-        <button type="submit" disabled={busy} className="btn btn-primary w-full">
+        <button type="submit" disabled={busy} className="btn btn-primary mt-1 w-full">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           {busy ? "Creating account…" : "Create Account"}
         </button>
@@ -221,7 +221,7 @@ function Field({
         {...rest}
       />
       {hint && !error && (
-        <p id={`${id}-hint`} className="mt-1 text-xs text-ink-500">
+        <p id={`${id}-hint`} className="mt-2 text-xs text-ink-500">
           {hint}
         </p>
       )}
@@ -234,7 +234,7 @@ function FieldError({ message, id }: { message?: string; id?: string }) {
   if (!message) return null;
 
   return (
-    <p id={id} className="mt-1 text-xs font-medium text-booked">
+    <p id={id} className="mt-2 text-xs font-medium text-booked">
       {message}
     </p>
   );

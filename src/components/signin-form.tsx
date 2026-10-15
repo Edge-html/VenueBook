@@ -86,14 +86,10 @@ function SignInFields() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <FormError message={error} />
 
-        {notice && (
-          <p className="rounded-lg border border-available/30 bg-available-soft px-3 py-2.5 text-sm font-medium text-available">
-            {notice}
-          </p>
-        )}
+        {notice && <p className="banner banner-notice font-medium">{notice}</p>}
 
         <div>
           <label htmlFor="identifier" className="field-label">
@@ -122,7 +118,7 @@ function SignInFields() {
               type="button"
               onClick={handleReset}
               disabled={resetting || busy}
-              className="text-xs font-semibold text-brand-700 hover:underline disabled:opacity-50"
+              className="link text-xs disabled:opacity-50"
             >
               {resetting ? "Sending…" : "Forgot password?"}
             </button>
@@ -138,20 +134,20 @@ function SignInFields() {
               value={password}
               onChange={(event) => edit(setPassword)(event.target.value)}
               placeholder="••••••••"
-              className="field pr-11"
+              className="field pr-14"
             />
             <button
               type="button"
               onClick={() => setShowPassword((show) => !show)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-500 hover:text-brand-700"
+              className="absolute inset-y-0 right-0 grid w-14 place-items-center text-ink-400 transition-colors hover:text-brand-700"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
-        <button type="submit" disabled={busy} className="btn btn-primary w-full">
+        <button type="submit" disabled={busy} className="btn btn-primary mt-1 w-full">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           {busy ? "Signing in…" : "Sign In"}
         </button>
