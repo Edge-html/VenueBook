@@ -58,14 +58,21 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-ink-200 bg-ink-50/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Logo />
-          <span className="hidden h-8 w-px bg-ink-200 lg:block" />
-          <span className="hidden text-sm text-ink-500 lg:block">
+          <span className="hidden h-8 w-px bg-ink-200 lg:block xl:hidden" />
+          {/* Fills the gap the icon-only nav leaves at lg. Once the labels
+              arrive at xl the row needs all 1280px the container allows, so
+              this decorative tagline steps aside. */}
+          <span className="hidden whitespace-nowrap text-sm text-ink-500 lg:block xl:hidden">
             Your Space, Your Schedule.
           </span>
         </div>
 
+        {/* The labels do not fit beside the logo and auth buttons until xl, so
+            from lg up each link is a padded icon that grows into its label.
+            That keeps every destination one click away at any width, and
+            guarantees a label never breaks across two lines. */}
         <nav className="ml-auto hidden items-center gap-1 lg:flex">
           {HOME_LINKS.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? isHome : pathname === href;
@@ -74,20 +81,22 @@ export function SiteHeader() {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors ${
+                aria-label={label}
+                title={label}
+                className={`flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors xl:px-3.5 ${
                   active
                     ? "bg-brand-50 text-brand-800"
                     : "text-ink-600 hover:bg-ink-200 hover:text-ink-900"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${active ? "text-brand-700" : "text-ink-400"}`} />
-                {label}
+                <Icon className={`h-4 w-4 shrink-0 ${active ? "text-brand-700" : "text-ink-400"}`} />
+                <span className="hidden xl:inline">{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 lg:ml-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-2">
           {user ? (
             <div className="relative hidden lg:block" ref={menuRef}>
               <button
@@ -187,7 +196,7 @@ export function SiteHeader() {
               href="/"
               onClick={closeMenus}
               aria-current={isHome ? "page" : undefined}
-              className={`flex items-center gap-2.5 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2.5 whitespace-nowrap rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
                 isHome ? "bg-brand-50 text-brand-800" : "text-ink-600 hover:bg-ink-200"
               }`}
             >
@@ -200,7 +209,7 @@ export function SiteHeader() {
                 href={href}
                 onClick={closeMenus}
                 aria-current={pathname === href ? "page" : undefined}
-                className={`flex items-center gap-2.5 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2.5 whitespace-nowrap rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
                   pathname === href
                     ? "bg-brand-50 text-brand-800"
                     : "text-ink-600 hover:bg-ink-200"
