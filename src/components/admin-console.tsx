@@ -20,6 +20,7 @@ import {
   blockSlot,
   blocksQueryForDate,
   cancelBooking,
+  ensureAvailabilityProjections,
   fetchIdPhoto,
   markBookingCompleted,
   markBookingNoShow,
@@ -70,6 +71,7 @@ export function AdminConsole() {
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [projectionSyncComplete, setProjectionSyncComplete] = useState(false);
 
   // Schedule editor state.
   const [scheduleFacility, setScheduleFacility] = useState<FacilityId>("gymnasium");
@@ -118,6 +120,23 @@ export function AdminConsole() {
     (b) => b.date === today && b.status === "approved",
   ).length;
 
+  // Backfill the privacy-safe calendar records for bookings created before
+  // this split schema. This is idempotent and only runs for administrators.
+  useEffect(() => {
+    if (bookingLive.loading || projectionSyncComplete) return;
+    let active = true;
+    ensureAvailabilityProjections(bookings)
+      .then(() => {
+        if (active) setProjectionSyncComplete(true);
+      })
+      .catch(() => {
+        if (active) setError("Could not prepare existing reservations for the shared calendar.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [bookingLive.loading, bookings, projectionSyncComplete]);
+
   async function review(
     booking: Booking,
     decision: Extract<BookingStatus, "approved" | "rejected">,
@@ -135,7 +154,7 @@ export function AdminConsole() {
     try {
       await setBookingStatus(booking.id, decision, { uid: user.uid, name: adminName }, note);
 
-      await notifyUser(
+      const notified = await notifyUser(
         booking.userId,
         decision === "approved" ? "Booking approved" : "Booking declined",
         decision === "approved"
@@ -147,16 +166,16 @@ export function AdminConsole() {
 
       // The live listener pushes the new status back, so no local patch.
 
-      setToast(
-        decision === "approved" ? "Booking approved." : "Booking declined and student notified.",
-      );
+      setToast(notified
+        ? decision === "approved" ? "Booking approved and student notified." : "Booking declined and student notified."
+        : "Booking updated, but the student notification could not be delivered.");
       setNoteDraft((current) => {
         const next = { ...current };
         delete next[booking.id];
         return next;
       });
-    } catch {
-      setError("Could not update that booking. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update that booking. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -168,14 +187,14 @@ export function AdminConsole() {
     setBusyId(booking.id);
     try {
       await removeBooking(booking);
-      await notifyUser(
+      const notified = await notifyUser(
         booking.userId,
         "Booking removed",
         "An admin removed your reservation request.",
         "cancelled",
         booking.id,
       );
-      setToast("Booking deleted.");
+      setToast(notified ? "Booking deleted and student notified." : "Booking deleted, but the student notification could not be delivered.");
     } catch {
       setError("Could not delete that booking.");
     } finally {
@@ -187,14 +206,14 @@ export function AdminConsole() {
     setBusyId(booking.id);
     try {
       await cancelBooking(booking.id, true);
-      await notifyUser(
+      const notified = await notifyUser(
         booking.userId,
         "Booking cancelled by admin",
         `An admin cancelled your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(booking.date)}.`,
         "cancelled",
         booking.id,
       );
-      setToast("Booking cancelled.");
+      setToast(notified ? "Booking cancelled and student notified." : "Booking cancelled, but the student notification could not be delivered.");
     } catch {
       setError("Could not cancel that booking.");
     } finally {
@@ -210,7 +229,7 @@ export function AdminConsole() {
     setBusyId(booking.id);
     try {
       await markBookingNoShow(booking.id);
-      await notifyUser(
+      const notified = await notifyUser(
         booking.userId,
         "Marked as a no-show",
         `Your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(
@@ -219,7 +238,7 @@ export function AdminConsole() {
         "cancelled",
         booking.id,
       );
-      setToast("Slot released — marked as a no-show.");
+      setToast(notified ? "Slot released and student notified." : "Slot released, but the student notification could not be delivered.");
     } catch {
       setError("Could not release that slot.");
     } finally {
@@ -257,8 +276,8 @@ export function AdminConsole() {
         setToast("Slot closed for bookings.");
       }
       setBlockReason("");
-    } catch {
-      setError("Could not update the schedule.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update the schedule.");
     }
   }
 

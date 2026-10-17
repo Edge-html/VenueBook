@@ -11,7 +11,7 @@ import {
   bookingsQueriesForDates,
   foldBlocksIntoSlots,
   parseBlockedSlotDoc,
-  parseBookingDoc,
+  parseScheduleEntryDoc,
 } from "@/lib/data";
 import {
   addDays,
@@ -91,7 +91,7 @@ export function AvailabilityCalendar() {
   const data = useMemo(() => {
     if (!bookingLive.docs || !blockLive.docs) return null;
 
-    const bookings = bookingLive.docs.map(parseBookingDoc);
+    const bookings = bookingLive.docs.map(parseScheduleEntryDoc);
     const blocks = blockLive.docs.map(parseBlockedSlotDoc);
 
     return Object.fromEntries(

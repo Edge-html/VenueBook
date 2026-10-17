@@ -90,7 +90,9 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
   const [endTime, setEndTime] = useState("");
   const [conflict, setConflict] = useState<string | null>(null);
   const [softWarning, setSoftWarning] = useState<string | null>(null);
+  const [rangeCheckError, setRangeCheckError] = useState<string | null>(null);
   const [checkedKey, setCheckedKey] = useState("");
+  const [checkAttempt, setCheckAttempt] = useState(0);
   const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
   const [skipPhoto, setSkipPhoto] = useState(false);
 
@@ -135,30 +137,32 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     if (!rangeKey) return;
 
     let active = true;
-
     findRangeConflicts(facilityId, date, startTime, endTime)
       .then(({ hard, pending }) => {
         if (!active) return;
         setConflict(hard);
         setSoftWarning(pending);
+        setRangeCheckError(null);
         setCheckedKey(rangeKey);
       })
       .catch(() => {
         if (!active) return;
         setConflict(null);
         setSoftWarning(null);
+        setRangeCheckError("We couldn't check availability. Try again before submitting your request.");
         setCheckedKey(rangeKey);
       });
 
     return () => {
       active = false;
     };
-  }, [rangeKey, facilityId, date, startTime, endTime]);
+  }, [rangeKey, facilityId, date, startTime, endTime, checkAttempt]);
 
   // Results only apply to the exact range they were fetched for.
   const checking = Boolean(rangeKey) && checkedKey !== rangeKey;
   const activeConflict = checkedKey === rangeKey ? conflict : null;
   const activeWarning = checkedKey === rangeKey && !conflict ? softWarning : null;
+  const activeRangeCheckError = checkedKey === rangeKey ? rangeCheckError : null;
 
   function changeFacility(next: FacilityId) {
     setFacilityId(next);
@@ -224,6 +228,8 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
     }
 
     if (activeConflict) next.startTime = activeConflict;
+    if (activeRangeCheckError) next.startTime = activeRangeCheckError;
+    else if (checking) next.startTime = "Please wait while we check availability.";
 
     const count = Number(attendees);
     if (!Number.isFinite(count) || count < 1) next.attendees = "Enter at least 1 attendee.";
@@ -483,7 +489,24 @@ function BookingFields({ defaultFullName }: { defaultFullName: string }) {
             </p>
           )}
 
-          {!activeConflict && !activeWarning && startTime && endTime && (
+          {activeRangeCheckError && (
+            <div role="alert" className="banner banner-error mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span>{activeRangeCheckError}</span>
+              <button
+                type="button"
+                className="text-xs font-semibold underline"
+                onClick={() => {
+                  setCheckedKey("");
+                  setRangeCheckError(null);
+                  setCheckAttempt((attempt) => attempt + 1);
+                }}
+              >
+                Retry check
+              </button>
+            </div>
+          )}
+
+          {!activeConflict && !activeWarning && !checking && !activeRangeCheckError && startTime && endTime && (
             <p className="text-xs text-ink-500">
               {formatTimeRange(startTime, endTime)} looks free. You can still{" "}
               <Link href={`/availability?facility=${facilityId}&date=${date}`} className="link">

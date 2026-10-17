@@ -8,6 +8,7 @@ import {
   limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -35,6 +36,8 @@ import type {
 export const COLLECTIONS = {
   users: "users",
   bookings: "bookings",
+  availability: "availability",
+  scheduleDays: "scheduleDays",
   blockedSlots: "blockedSlots",
   notifications: "notifications",
   idPhotos: "idPhotos",
@@ -116,9 +119,12 @@ export async function removeUploadedIdPhoto(id: string | null): Promise<void> {
 export interface DaySnapshot {
   /** Block id → state. Every block in TIME_BLOCKS is present. */
   slots: Record<string, SlotState>;
-  bookings: Booking[];
+  bookings: ScheduleEntry[];
   blocks: BlockedSlot[];
 }
+
+/** Public schedule fields; personal reservation details stay in `bookings`. */
+export type ScheduleEntry = Pick<Booking, "id" | "facilityId" | "date" | "startTime" | "endTime" | "status">;
 
 function emptySlots(): Record<string, SlotState> {
   return Object.fromEntries(TIME_BLOCKS.map((b) => [b.id, "available" as SlotState]));
@@ -132,7 +138,7 @@ function emptySlots(): Record<string, SlotState> {
  * "booked" for its whole span. Approved beats pending beats closed.
  */
 function foldIntoBlocks(
-  bookings: Booking[],
+  bookings: ScheduleEntry[],
   blocks: BlockedSlot[],
   date: string,
 ): Record<string, SlotState> {
@@ -184,7 +190,7 @@ export async function getDayAvailability(
   date: string,
 ): Promise<DaySnapshot> {
   const bookingQuery = query(
-    collection(db, COLLECTIONS.bookings),
+    collection(db, COLLECTIONS.availability),
     where("facilityId", "==", facilityId),
     where("date", "==", date),
   );
@@ -200,7 +206,7 @@ export async function getDayAvailability(
     getDocs(blockQuery),
   ]);
 
-  const bookings = bookingSnap.docs.map(toBooking);
+  const bookings = bookingSnap.docs.map(toScheduleEntry);
   const blocks = blockSnap.docs.map(toBlockedSlot);
 
   return { slots: foldIntoBlocks(bookings, blocks, date), bookings, blocks };
@@ -246,7 +252,7 @@ export async function findRangeConflicts(
   const { bookings } = day;
 
   let hard: string | null = null;
-  let pending: string | null = null;
+  const pending: string | null = null;
 
   for (const closure of blocks) {
     if (hard) break;
@@ -269,8 +275,8 @@ export async function findRangeConflicts(
 
     if (booking.status === "approved") {
       if (!hard) hard = `That time overlaps an approved booking (${range}).`;
-    } else if (booking.status === "pending" && !pending) {
-      pending = `Someone has a request pending for ${range}. You can still submit, but an admin may only approve one.`;
+    } else if (booking.status === "pending" && !hard) {
+      hard = `Someone already has a request pending for ${range}. Please choose another time.`;
     }
   }
 
@@ -295,7 +301,7 @@ export function bookingsQueriesForDates(
 
   return chunk(dates, IN_CHUNK).map((batch) =>
     query(
-      collection(db, COLLECTIONS.bookings),
+      collection(db, COLLECTIONS.availability),
       where("facilityId", "==", facilityId),
       where("date", "in", batch),
     ),
@@ -351,6 +357,9 @@ export function blocksQueryForDate(facilityId: FacilityId, date: string): Query<
 export const parseBookingDoc = (doc: { id: string; data: () => DocumentData }) =>
   parseBooking(doc.id, doc.data());
 
+export const parseScheduleEntryDoc = (doc: { id: string; data: () => DocumentData }) =>
+  toScheduleEntry(doc as QueryDocumentSnapshot<DocumentData>);
+
 /** Parsers exported so live snapshots reuse the same mapping as one-shot reads. */
 export const parseNotificationDoc = (doc: { id: string; data: () => DocumentData }) =>
   toNotification({ id: doc.id, data: doc.data } as QueryDocumentSnapshot<DocumentData>);
@@ -379,6 +388,12 @@ export interface NewBookingInput {
   userId: string;
 }
 
+class ScheduleChangedError extends Error {
+  constructor() {
+    super("The schedule changed while checking this request.");
+  }
+}
+
 export async function createBooking(input: NewBookingInput): Promise<string> {
   const { startTime, endTime, date, ...rest } = input;
 
@@ -387,7 +402,10 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
   // if someone bypasses the form.
   const { startAt, endAt } = bookingInstants(date, startTime, endTime);
 
-  const created = await addDoc(collection(db, COLLECTIONS.bookings), {
+  const bookingRef = doc(collection(db, COLLECTIONS.bookings));
+  const availabilityRef = doc(db, COLLECTIONS.availability, bookingRef.id);
+  const dayRef = doc(db, COLLECTIONS.scheduleDays, `${input.facilityId}__${date}`);
+  const bookingData = {
     ...rest,
     date,
     startTime,
@@ -396,8 +414,87 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
     endAt: endAt ? Timestamp.fromDate(endAt) : null,
     status: "pending" satisfies BookingStatus,
     createdAt: serverTimestamp(),
-  });
-  return created.id;
+  };
+
+  // All reservations for one facility/day touch the same schedule-day
+  // document. Firestore retries a transaction if another request changes it,
+  // so simultaneous submissions cannot both pass the overlap check.
+  let reservationSaved = false;
+  for (let attempt = 0; attempt < 5 && !reservationSaved; attempt += 1) {
+    const dayBeforeQueries = await getDoc(dayRef);
+    const queriedRevision = dayBeforeQueries.exists()
+      ? Number(dayBeforeQueries.data().revision ?? 0)
+      : 0;
+    const [availabilitySnap, blocksSnap] = await Promise.all([
+      getDocs(query(
+        collection(db, COLLECTIONS.availability),
+        where("facilityId", "==", input.facilityId),
+        where("date", "==", date),
+      )),
+      getDocs(query(
+        collection(db, COLLECTIONS.blockedSlots),
+        where("facilityId", "==", input.facilityId),
+        where("date", "==", date),
+      )),
+    ]);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const daySnap = await transaction.get(dayRef);
+        const currentRevision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+        if (currentRevision !== queriedRevision) throw new ScheduleChangedError();
+
+        const requestedStart = toMinutes(startTime);
+        const requestedEnd = toMinutes(endTime);
+        if (requestedStart === null || requestedEnd === null || requestedEnd <= requestedStart) {
+          throw new Error("That time is not valid. Please choose a valid start and end time.");
+        }
+
+        const closureConflict = blocksSnap.docs.some((blockDoc) => {
+          const block = toBlockedSlot(blockDoc);
+          const timeBlock = BLOCK_BY_ID[block.timeSlot];
+          return Boolean(timeBlock && overlaps(requestedStart, requestedEnd, timeBlock.startMin, timeBlock.endMin));
+        });
+        if (closureConflict) throw new Error("That time overlaps a facility closure. Please choose another time.");
+
+        const bookingConflict = availabilitySnap.docs.some((entryDoc) => {
+          const entry = toScheduleEntry(entryDoc);
+          if (entry.status !== "pending" && entry.status !== "approved") return false;
+          const existingStart = toMinutes(entry.startTime);
+          const existingEnd = toMinutes(entry.endTime);
+          return existingStart !== null && existingEnd !== null && overlaps(requestedStart, requestedEnd, existingStart, existingEnd);
+        });
+        if (bookingConflict) throw new Error("That time was just reserved or requested. Please choose another time.");
+
+        const { startAt: startInstant } = bookingInstants(date, startTime, endTime);
+        if (!startInstant || startInstant.getTime() <= Date.now()) {
+          throw new Error("That time has already passed. Please choose a future time.");
+        }
+
+        transaction.set(dayRef, {
+          facilityId: input.facilityId,
+          date,
+          revision: currentRevision + 1,
+          lastBookingId: bookingRef.id,
+          updatedAt: serverTimestamp(),
+        });
+        transaction.set(bookingRef, bookingData);
+        transaction.set(availabilityRef, {
+          facilityId: input.facilityId,
+          date,
+          startTime,
+          endTime,
+          status: "pending" satisfies BookingStatus,
+        });
+      });
+      reservationSaved = true;
+    } catch (error) {
+      if (error instanceof ScheduleChangedError) continue;
+      throw error;
+    }
+  }
+  if (!reservationSaved) throw new Error("The schedule is updating. Please try your reservation again.");
+  return bookingRef.id;
 }
 
 /** The student closes out their own booking, or an admin does it for them. */
@@ -405,7 +502,7 @@ export async function markBookingCompleted(
   bookingId: string,
   byAdmin = false,
 ): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
+  await updateBookingState(bookingId, {
     status: "completed" satisfies BookingStatus,
     completedAt: serverTimestamp(),
     ...(byAdmin ? { reviewedAt: serverTimestamp() } : {}),
@@ -414,7 +511,7 @@ export async function markBookingCompleted(
 
 /** Admin releases a slot because the student never arrived. */
 export async function markBookingNoShow(bookingId: string): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
+  await updateBookingState(bookingId, {
     status: "no_show" satisfies BookingStatus,
     noShowAt: serverTimestamp(),
     reviewedAt: serverTimestamp(),
@@ -427,23 +524,143 @@ export async function setBookingStatus(
   admin: { uid: string; name: string },
   note = "",
 ): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.bookings, bookingId), {
+  await updateBookingState(bookingId, {
     status,
     reviewedAt: serverTimestamp(),
     reviewedBy: admin.name,
     adminNote: note.trim() || null,
-  });
+  }, status === "approved");
 }
 
 export async function cancelBooking(bookingId: string, byAdmin = false): Promise<void> {
   // A student's cancellation may only touch `status` — the security rules
   // reject any other changed field, so `reviewedAt` is written by admins only.
-  await updateDoc(
-    doc(db, COLLECTIONS.bookings, bookingId),
-    byAdmin
-      ? { status: "cancelled" satisfies BookingStatus, reviewedAt: serverTimestamp() }
-      : { status: "cancelled" satisfies BookingStatus },
-  );
+  await updateBookingState(bookingId, byAdmin
+    ? { status: "cancelled" satisfies BookingStatus, reviewedAt: serverTimestamp() }
+    : { status: "cancelled" satisfies BookingStatus });
+}
+
+/** Keeps the private booking and its public schedule projection in one write. */
+async function updateBookingState(
+  bookingId: string,
+  changes: Record<string, unknown> & { status: BookingStatus },
+  checkSchedule = false,
+): Promise<void> {
+  const bookingRef = doc(db, COLLECTIONS.bookings, bookingId);
+  const availabilityRef = doc(db, COLLECTIONS.availability, bookingId);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const bookingBefore = await getDoc(bookingRef);
+    if (!bookingBefore.exists()) throw new Error("This reservation no longer exists.");
+    const booking = parseBooking(bookingBefore.id, bookingBefore.data());
+    const dayRef = doc(db, COLLECTIONS.scheduleDays, `${booking.facilityId}__${booking.date}`);
+    const dayBefore = await getDoc(dayRef);
+    const queriedRevision = dayBefore.exists() ? Number(dayBefore.data().revision ?? 0) : 0;
+
+    if (checkSchedule) {
+      if (booking.status !== "pending") throw new Error("This request has already been reviewed.");
+      const [availabilitySnap, blocksSnap] = await Promise.all([
+        getDocs(query(
+          collection(db, COLLECTIONS.availability),
+          where("facilityId", "==", booking.facilityId),
+          where("date", "==", booking.date),
+        )),
+        getDocs(query(
+          collection(db, COLLECTIONS.blockedSlots),
+          where("facilityId", "==", booking.facilityId),
+          where("date", "==", booking.date),
+        )),
+      ]);
+      const start = toMinutes(booking.startTime);
+      const end = toMinutes(booking.endTime);
+      const blocked = start !== null && end !== null && blocksSnap.docs.some((blockDoc) => {
+        const timeBlock = BLOCK_BY_ID[toBlockedSlot(blockDoc).timeSlot];
+        return Boolean(timeBlock && overlaps(start, end, timeBlock.startMin, timeBlock.endMin));
+      });
+      const conflict = start !== null && end !== null && availabilitySnap.docs.some((entryDoc) => {
+        const entry = toScheduleEntry(entryDoc);
+        if (entry.id === bookingId || (entry.status !== "pending" && entry.status !== "approved")) return false;
+        const otherStart = toMinutes(entry.startTime);
+        const otherEnd = toMinutes(entry.endTime);
+        return otherStart !== null && otherEnd !== null && overlaps(start, end, otherStart, otherEnd);
+      });
+      if (blocked) throw new Error("This request overlaps a facility closure and cannot be approved.");
+      if (conflict) throw new Error("Another pending or approved reservation overlaps this time. Resolve that request first.");
+    }
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const [bookingSnap, daySnap] = await Promise.all([
+          transaction.get(bookingRef),
+          transaction.get(dayRef),
+        ]);
+        if (!bookingSnap.exists()) throw new Error("This reservation no longer exists.");
+        const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+        if (checkSchedule && revision !== queriedRevision) throw new ScheduleChangedError();
+
+        transaction.update(bookingRef, changes);
+        transaction.set(availabilityRef, {
+          facilityId: booking.facilityId,
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          status: changes.status,
+        });
+        transaction.set(dayRef, {
+          facilityId: booking.facilityId,
+          date: booking.date,
+          revision: revision + 1,
+          lastBookingId: bookingId,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      return;
+    } catch (error) {
+      if (checkSchedule && error instanceof ScheduleChangedError) continue;
+      throw error;
+    }
+  }
+  throw new Error("The schedule is updating. Refresh and try again.");
+}
+
+/** One-time-compatible backfill for reservations created before projections existed. */
+export async function ensureAvailabilityProjections(bookings: Booking[]): Promise<void> {
+  const byDay = new Map<string, Booking[]>();
+  for (const booking of bookings) {
+    const key = `${booking.facilityId}__${booking.date}`;
+    byDay.set(key, [...(byDay.get(key) ?? []), booking]);
+  }
+
+  await Promise.all([...byDay.entries()].map(async ([key, dayBookings]) => {
+    const dayRef = doc(db, COLLECTIONS.scheduleDays, key);
+    await runTransaction(db, async (transaction) => {
+      const [daySnap, ...availabilitySnaps] = await Promise.all([
+        transaction.get(dayRef),
+        ...dayBookings.map((booking) =>
+          transaction.get(doc(db, COLLECTIONS.availability, booking.id)),
+        ),
+      ]);
+      const missing = dayBookings.filter((_, index) => !availabilitySnaps[index].exists());
+      if (missing.length === 0) return;
+      const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+      for (const booking of missing) {
+        transaction.set(doc(db, COLLECTIONS.availability, booking.id), {
+          facilityId: booking.facilityId,
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          status: booking.status,
+        });
+      }
+      const lastBooking = missing[missing.length - 1];
+      transaction.set(dayRef, {
+        facilityId: lastBooking.facilityId,
+        date: lastBooking.date,
+        revision: revision + 1,
+        lastBookingId: lastBooking.id,
+        updatedAt: serverTimestamp(),
+      });
+    });
+  }));
 }
 
 /** True when any *other* active booking still overlaps this one. */
@@ -492,23 +709,71 @@ export async function blockSlot(
   reason: string,
   adminUid: string,
 ): Promise<void> {
-  await setDoc(
-    doc(db, COLLECTIONS.blockedSlots, blockedSlotId(facilityId, date, timeSlot)),
-    {
-      facilityId,
-      date,
-      timeSlot,
-      reason: reason.trim() || "Closed by admin",
-      createdAt: serverTimestamp(),
-      createdBy: adminUid,
-    },
-  );
+  const dayRef = doc(db, COLLECTIONS.scheduleDays, `${facilityId}__${date}`);
+  const timeBlock = BLOCK_BY_ID[timeSlot];
+  if (!timeBlock) throw new Error("That closure period is not valid.");
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const dayBefore = await getDoc(dayRef);
+    const queriedRevision = dayBefore.exists() ? Number(dayBefore.data().revision ?? 0) : 0;
+    const schedule = await getDocs(query(
+      collection(db, COLLECTIONS.availability),
+      where("facilityId", "==", facilityId),
+      where("date", "==", date),
+    ));
+    const conflict = schedule.docs.some((entryDoc) => {
+      const entry = toScheduleEntry(entryDoc);
+      if (entry.status !== "pending" && entry.status !== "approved") return false;
+      const start = toMinutes(entry.startTime);
+      const end = toMinutes(entry.endTime);
+      return start !== null && end !== null && overlaps(start, end, timeBlock.startMin, timeBlock.endMin);
+    });
+    if (conflict) throw new Error("An active reservation uses part of this period. Resolve it before closing the facility.");
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const daySnap = await transaction.get(dayRef);
+        const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+        if (revision !== queriedRevision) throw new ScheduleChangedError();
+        transaction.set(
+          doc(db, COLLECTIONS.blockedSlots, blockedSlotId(facilityId, date, timeSlot)),
+          {
+            facilityId,
+            date,
+            timeSlot,
+            reason: reason.trim() || "Closed by admin",
+            createdAt: serverTimestamp(),
+            createdBy: adminUid,
+          },
+        );
+        transaction.set(dayRef, {
+          facilityId,
+          date,
+          revision: revision + 1,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      return;
+    } catch (error) {
+      if (error instanceof ScheduleChangedError) continue;
+      throw error;
+    }
+  }
+  throw new Error("The schedule is updating. Try closing that period again.");
 }
 
 export async function unblockSlot(facilityId: FacilityId, date: string, timeSlot: string) {
-  await deleteDoc(
-    doc(db, COLLECTIONS.blockedSlots, blockedSlotId(facilityId, date, timeSlot)),
-  );
+  const dayRef = doc(db, COLLECTIONS.scheduleDays, `${facilityId}__${date}`);
+  await runTransaction(db, async (transaction) => {
+    const daySnap = await transaction.get(dayRef);
+    const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+    transaction.delete(doc(db, COLLECTIONS.blockedSlots, blockedSlotId(facilityId, date, timeSlot)));
+    transaction.set(dayRef, {
+      facilityId,
+      date,
+      revision: revision + 1,
+      updatedAt: serverTimestamp(),
+    });
+  });
 }
 
 export async function getBlocks(facilityId: FacilityId, date: string): Promise<BlockedSlot[]> {
@@ -531,8 +796,27 @@ export async function removeBooking(booking: Booking): Promise<void> {
     await cancelBooking(booking.id, true);
     return;
   }
+  const bookingRef = doc(db, COLLECTIONS.bookings, booking.id);
+  const availabilityRef = doc(db, COLLECTIONS.availability, booking.id);
+  const dayRef = doc(db, COLLECTIONS.scheduleDays, `${booking.facilityId}__${booking.date}`);
+  await runTransaction(db, async (transaction) => {
+    const [bookingSnap, daySnap] = await Promise.all([
+      transaction.get(bookingRef),
+      transaction.get(dayRef),
+    ]);
+    if (!bookingSnap.exists()) return;
+    const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
+    transaction.delete(bookingRef);
+    transaction.delete(availabilityRef);
+    transaction.set(dayRef, {
+      facilityId: booking.facilityId,
+      date: booking.date,
+      revision: revision + 1,
+      lastBookingId: booking.id,
+      updatedAt: serverTimestamp(),
+    });
+  });
   await removeUploadedIdPhoto(booking.idPhotoUrl);
-  await deleteDoc(doc(db, COLLECTIONS.bookings, booking.id));
 }
 
 /* ── Notifications ─────────────────────────────────────────────────────── */
@@ -590,7 +874,7 @@ export async function notifyUser(
   body: string,
   kind: AppNotification["kind"],
   bookingId: string | null,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await addDoc(collection(db, COLLECTIONS.notifications), {
       uid,
@@ -601,15 +885,24 @@ export async function notifyUser(
       read: false,
       createdAt: serverTimestamp(),
     });
+    return true;
   } catch {
-    // Notification delivery is advisory.
+    return false;
   }
 }
 
 /* ── Mapping ───────────────────────────────────────────────────────────── */
 
-function toBooking(snap: QueryDocumentSnapshot<DocumentData>): Booking {
-  return parseBooking(snap.id, snap.data() as DocumentData);
+function toScheduleEntry(snap: QueryDocumentSnapshot<DocumentData>): ScheduleEntry {
+  const data = snap.data();
+  return {
+    id: snap.id,
+    facilityId: data.facilityId as FacilityId,
+    date: data.date as string,
+    startTime: data.startTime as string,
+    endTime: data.endTime as string,
+    status: data.status as BookingStatus,
+  };
 }
 
 /**
