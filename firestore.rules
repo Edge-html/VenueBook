@@ -24,7 +24,7 @@ service cloud.firestore {
     }
 
     function scheduleDayAfter(facilityId, date) {
-      return getAfter(/databases/$(database)/documents/scheduleDays/$(facilityId)__$(date));
+      return getAfter(/databases/$(database)/documents/scheduleDays/$(facilityId + '__' + date));
     }
 
     match /users/{uid} {
@@ -55,7 +55,7 @@ service cloud.firestore {
                     && availabilityAfter(bookingId).data.startTime == request.resource.data.startTime
                     && availabilityAfter(bookingId).data.endTime == request.resource.data.endTime
                     && availabilityAfter(bookingId).data.status == request.resource.data.status
-                    && existsAfter(/databases/$(database)/documents/scheduleDays/$(request.resource.data.facilityId)__$(request.resource.data.date))
+                    && existsAfter(/databases/$(database)/documents/scheduleDays/$(request.resource.data.facilityId + '__' + request.resource.data.date))
                     && scheduleDayAfter(request.resource.data.facilityId, request.resource.data.date).data.lastBookingId == bookingId;
 
       allow update: if existsAfter(/databases/$(database)/documents/availability/$(bookingId))
