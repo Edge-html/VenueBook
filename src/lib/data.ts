@@ -21,7 +21,7 @@ import {
 import { db } from "./firebase";
 import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
 import { bookingInstants, DEFAULT_SCHOOL_CALENDAR, schoolDayReason, type SchoolCalendarSettings } from "./dates";
-import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
+import { formatTimeRange, fromMinutes, inclusiveHourEnd, overlaps, toMinutes } from "./time";
 import type {
   AppNotification,
   BlockedSlot,
@@ -256,7 +256,7 @@ function foldIntoBlocks(
       const startMin = toMinutes(booking.startTime);
       const endMin = toMinutes(booking.endTime);
       if (startMin === null || endMin === null) continue;
-      if (!overlaps(block.startMin, block.endMin, startMin, endMin)) continue;
+      if (!overlaps(block.startMin, block.endMin, startMin, inclusiveHourEnd(endMin))) continue;
 
       if (booking.status === "approved") {
         state = "booked";
@@ -349,7 +349,7 @@ export async function findRangeConflicts(
     if (hard) break;
     const closureBlock = BLOCK_BY_ID[closure.timeSlot];
     if (!closureBlock) continue;
-    if (overlaps(startMin, endMin, closureBlock.startMin, closureBlock.endMin)) {
+    if (overlaps(startMin, inclusiveHourEnd(endMin), closureBlock.startMin, closureBlock.endMin)) {
       hard = `The venue is closed for ${closure.reason.toLowerCase()} during part of that time.`;
     }
   }
@@ -360,7 +360,7 @@ export async function findRangeConflicts(
     const bookingStart = toMinutes(booking.startTime);
     const bookingEnd = toMinutes(booking.endTime);
     if (bookingStart === null || bookingEnd === null) continue;
-    if (!overlaps(startMin, endMin, bookingStart, bookingEnd)) continue;
+    if (!overlaps(startMin, inclusiveHourEnd(endMin), bookingStart, inclusiveHourEnd(bookingEnd))) continue;
 
     const range = formatTimeRange(booking.startTime, booking.endTime);
 
@@ -609,11 +609,12 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
         if (requestedStart === null || requestedEnd === null || requestedEnd <= requestedStart) {
           throw new Error("That time is not valid. Please choose a valid start and end time.");
         }
+        const requestedAvailabilityEnd = inclusiveHourEnd(requestedEnd);
 
         const closureConflict = blocksSnap.docs.some((blockDoc) => {
           const block = toBlockedSlot(blockDoc);
           const timeBlock = BLOCK_BY_ID[block.timeSlot];
-          return Boolean(timeBlock && overlaps(requestedStart, requestedEnd, timeBlock.startMin, timeBlock.endMin));
+          return Boolean(timeBlock && overlaps(requestedStart, requestedAvailabilityEnd, timeBlock.startMin, timeBlock.endMin));
         });
         if (closureConflict) throw new Error("That time overlaps a facility closure. Please choose another time.");
 
@@ -622,7 +623,7 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
           if (entry.status !== "pending" && entry.status !== "approved") return false;
           const existingStart = toMinutes(entry.startTime);
           const existingEnd = toMinutes(entry.endTime);
-          return existingStart !== null && existingEnd !== null && overlaps(requestedStart, requestedEnd, existingStart, existingEnd);
+          return existingStart !== null && existingEnd !== null && overlaps(requestedStart, requestedAvailabilityEnd, existingStart, inclusiveHourEnd(existingEnd));
         });
         if (bookingConflict) throw new Error("That time was just reserved or requested. Please choose another time.");
 
@@ -751,14 +752,14 @@ async function updateBookingState(
       const end = toMinutes(booking.endTime);
       const blocked = start !== null && end !== null && blocksSnap.docs.some((blockDoc) => {
         const timeBlock = BLOCK_BY_ID[toBlockedSlot(blockDoc).timeSlot];
-        return Boolean(timeBlock && overlaps(start, end, timeBlock.startMin, timeBlock.endMin));
+        return Boolean(timeBlock && overlaps(start, inclusiveHourEnd(end), timeBlock.startMin, timeBlock.endMin));
       });
       const conflict = start !== null && end !== null && availabilitySnap.docs.some((entryDoc) => {
         const entry = toScheduleEntry(entryDoc);
         if (entry.id === bookingId || (entry.status !== "pending" && entry.status !== "approved")) return false;
         const otherStart = toMinutes(entry.startTime);
         const otherEnd = toMinutes(entry.endTime);
-        return otherStart !== null && otherEnd !== null && overlaps(start, end, otherStart, otherEnd);
+        return otherStart !== null && otherEnd !== null && overlaps(start, inclusiveHourEnd(end), otherStart, inclusiveHourEnd(otherEnd));
       });
       if (blocked) throw new Error("This request overlaps a facility closure and cannot be approved.");
       if (conflict) throw new Error("Another pending or approved reservation overlaps this time. Resolve that request first.");
@@ -905,7 +906,7 @@ async function isRangeStillHeld(
     const otherEnd = toMinutes(other.endTime);
     if (otherStart === null || otherEnd === null) return false;
 
-    return overlaps(startMin, endMin, otherStart, otherEnd);
+    return overlaps(startMin, inclusiveHourEnd(endMin), otherStart, inclusiveHourEnd(otherEnd));
   });
 }
 
@@ -934,7 +935,7 @@ export async function blockSlot(
       if (entry.status !== "pending" && entry.status !== "approved") return false;
       const start = toMinutes(entry.startTime);
       const end = toMinutes(entry.endTime);
-      return start !== null && end !== null && overlaps(start, end, timeBlock.startMin, timeBlock.endMin);
+      return start !== null && end !== null && overlaps(start, inclusiveHourEnd(end), timeBlock.startMin, timeBlock.endMin);
     });
     if (conflict) throw new Error("An active reservation uses part of this period. Resolve it before closing the facility.");
 

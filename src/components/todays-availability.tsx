@@ -193,7 +193,7 @@ export function TodaysAvailability() {
           })
         )}
       </div>
-      <p className="mt-3 text-xs text-ink-500">Each chip marks the hour ending at its label. For example, 12 PM means 11 AM–12 PM; 1 PM means 12–1 PM.</p>
+      <p className="mt-3 text-xs text-ink-500">A booking includes its ending hour. A 7 AM–12 PM booking marks 7 AM through 12 PM; 1 PM is next available.</p>
     </section>
   );
 }

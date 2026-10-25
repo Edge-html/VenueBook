@@ -52,6 +52,11 @@ export function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: num
   return aStart < bEnd && bStart < aEnd;
 }
 
+/** Include the selected ending hour in hourly availability and conflict checks. */
+export function inclusiveHourEnd(endMinute: number): number {
+  return endMinute + 60;
+}
+
 /** Minutes since midnight → "9 AM – 10 AM". Used for tooltips and confirmations. */
 export function describeMinutes(startMin: number, endMin: number): string {
   return `${formatClock(startMin)} – ${formatClock(endMin)}`;
