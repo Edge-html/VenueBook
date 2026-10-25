@@ -513,7 +513,7 @@ export const parseScheduleEntryDoc = (doc: { id: string; data: () => DocumentDat
 
 /** Parsers exported so live snapshots reuse the same mapping as one-shot reads. */
 export const parseNotificationDoc = (doc: { id: string; data: () => DocumentData }) =>
-  toNotification({ id: doc.id, data: doc.data } as QueryDocumentSnapshot<DocumentData>);
+  toNotification({ id: doc.id, data: () => doc.data() } as QueryDocumentSnapshot<DocumentData>);
 
 export const parseBlockedSlotDoc = toBlockedSlot;
 

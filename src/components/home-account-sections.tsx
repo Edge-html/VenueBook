@@ -111,9 +111,9 @@ function StudentSections() {
   return (
     <div className="animate-fade-up mt-3 space-y-3">
       {profile?.verificationRequired && !profile.emailOtpVerified && !user?.emailVerified && <Link href="/verify-email" className="banner banner-warning block font-medium">Verify your email from the link we sent to start booking →</Link>}
-      <Link href="/reservations" className="card block p-4 hover:border-brand-300">
+      <Link href="/reservations" className="card block border-brand-200 bg-gradient-to-r from-brand-50/70 to-white p-5 shadow-sm transition hover:border-brand-300">
         <p className="eyebrow">My Booking</p>
-        {nextBooking ? <><h2 className="mt-1 font-semibold text-ink-900">Scheduled Booking: {formatLongDate(nextBooking.date)}{nextBooking.date === todayKey() ? " · Today" : ""}</h2><p className="mt-1 text-sm text-ink-600">{facilities.find((facility) => facility.id === nextBooking.facilityId)?.name ?? FACILITY_BY_ID[nextBooking.facilityId]?.name} · {formatTimeRange(nextBooking.startTime, nextBooking.endTime)} · {nextBooking.status}</p><p className="mt-1 text-xs text-ink-500">{nextBooking.purpose} · {nextBooking.attendees} attendees</p></> : <p className="mt-1 text-sm text-ink-600">No upcoming booking. Open My Reservations to see your history.</p>}
+        {nextBooking ? <><p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">Scheduled booking</p><div className="mt-1 flex flex-wrap items-center gap-2.5"><h2 className="text-xl font-bold tracking-tight text-ink-950 sm:text-2xl">{formatLongDate(nextBooking.date)}</h2>{nextBooking.date === todayKey() && <span className="rounded-full bg-brand-700 px-3 py-1 text-sm font-bold text-white shadow-sm">Today</span>}</div><p className="mt-2 text-sm font-medium text-ink-700">{facilities.find((facility) => facility.id === nextBooking.facilityId)?.name ?? FACILITY_BY_ID[nextBooking.facilityId]?.name} · {formatTimeRange(nextBooking.startTime, nextBooking.endTime)} · {nextBooking.status}</p><p className="mt-1 text-xs text-ink-500">{nextBooking.purpose} · {nextBooking.attendees} attendees</p></> : <p className="mt-1 text-sm text-ink-600">No upcoming booking. Open My Reservations to see your history.</p>}
       </Link>
       <section className="grid gap-3 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
