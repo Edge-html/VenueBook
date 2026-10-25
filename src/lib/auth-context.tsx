@@ -34,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import { looksLikeEmail, normalizePhone } from "./phone";
 import type { UserProfile } from "./types";
-import { uploadIdPhoto } from "./data";
+import { prepareIdPhoto, uploadIdPhoto } from "./data";
 
 export interface SignUpInput {
   fullName: string;
@@ -173,9 +173,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async ({ fullName, phone, email, password, grade, section, idPhoto }: SignUpInput) => {
+    const preparedIdPhoto = await prepareIdPhoto(idPhoto);
     const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const phoneE164 = normalizePhone(phone);
-    const idPhotoUrl = await uploadIdPhoto(idPhoto, credential.user.uid);
+    const idPhotoUrl = await uploadIdPhoto(preparedIdPhoto, credential.user.uid);
     await updateProfile(credential.user, { displayName: fullName.trim() });
 
     // Never overwrite an existing profile: this can run on a re-signup, and a

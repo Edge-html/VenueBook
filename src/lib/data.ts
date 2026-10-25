@@ -101,23 +101,54 @@ export function validateIdPhoto(file: File): string | null {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
     return "Please upload a JPG, PNG, or WEBP image.";
   }
-  if (file.size > MAX_ID_PHOTO_BYTES) {
-    return `Image is too large. Please keep it under ${Math.round(MAX_ID_PHOTO_BYTES / 1024)} KB.`;
-  }
   return null;
 }
 
-export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
+/** Resize large phone screenshots before storing them in Firestore. */
+export async function prepareIdPhoto(file: File): Promise<File> {
   const error = validateIdPhoto(file);
   if (error) throw new Error(error);
+  if (file.size <= MAX_ID_PHOTO_BYTES) return file;
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("This browser cannot resize the image. Please choose a smaller JPG, PNG, or WEBP file.");
+  }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bitmap = await createImageBitmap(file);
+  try {
+    for (const maxDimension of [1800, 1500, 1200, 1000, 800]) {
+      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) break;
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      for (const quality of [0.84, 0.74, 0.64, 0.54]) {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (blob && blob.size <= MAX_ID_PHOTO_BYTES) {
+          const name = file.name.replace(/\.[^.]+$/, "") || "school-id";
+          return new File([blob], `${name}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+        }
+      }
+    }
+  } finally {
+    bitmap.close();
+  }
+
+  throw new Error("We could not reduce this image enough. Please choose a smaller or clearer School ID photo.");
+}
+
+export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
+  const preparedFile = await prepareIdPhoto(file);
+
+  const bytes = new Uint8Array(await preparedFile.arrayBuffer());
   const id = `${uid}_${Date.now()}`;
 
   await setDoc(doc(db, COLLECTIONS.idPhotos, id), {
     ownerId: uid,
     facilityIds: [],
-    contentType: file.type,
+    contentType: preparedFile.type,
     size: bytes.length,
     data: bytes,
     uploadedAt: serverTimestamp(),
