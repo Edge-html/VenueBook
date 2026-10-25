@@ -19,7 +19,7 @@ Name, crest logo, tagline, feature cards, facility cards, and a live
 **Create Account**.
 
 ### Accounts
-- **Create account** — full name, phone number, email, password.
+- **Create account** — full name, phone number, email, password, grade, section, and school ID photo. A six-digit email code must be verified before booking.
 - **Sign in** — with either your email address *or* your phone number.
 - Forgot-password reset by email or phone.
 - Roles are `student` and `admin`.
@@ -33,8 +33,8 @@ Name, crest logo, tagline, feature cards, facility cards, and a live
 | **Notifications** | Approval and decline updates from admins. |
 
 ### Booking form
-Full name, grade, section, school ID photo (saved to Firestore), date, and
-time slot. Only genuinely open slots are selectable. Submitted requests start
+Full name, grade and section from the profile, month/day/year, typed start/end
+times, purpose, attendees, and equipment quantities. Only genuinely open slots are selectable. Submitted requests start
 as **Pending** and wait for an admin.
 
 ### Admin side (`/admin`)
@@ -44,6 +44,13 @@ as **Pending** and wait for an admin.
   school event, etc.) and reopen them. Closed slots disappear from the booking
   form.
 - Stats for pending requests and today's approvals.
+- Daily, weekly, and monthly booking reports; new venues; venue-specific admin accounts.
+
+### Email OTP setup
+
+The app sends numeric codes through [Resend](https://resend.com/pricing/). Create a free account, verify a sender domain, then set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in Vercel. Also set `FIREBASE_SERVICE_ACCOUNT_JSON` to a Firebase service-account JSON and `OTP_HASH_SECRET` to a random secret of at least 32 bytes. These values are server-only. Without them, the verification screen reports that email verification is not configured.
+
+The code lasts 10 minutes, permits five attempts, and can be resent after one minute. The server checks the Firebase ID token and stores only a keyed hash of the code. Deploy the updated Firestore rules and indexes with the app; venue admins need the new facility query indexes and permissions.
 
 ---
 

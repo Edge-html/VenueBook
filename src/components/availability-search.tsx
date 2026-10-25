@@ -3,7 +3,7 @@
 import { CalendarSearch, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FACILITIES } from "@/lib/constants";
+import { useFacilities } from "@/lib/use-facilities";
 
 /** Recognises "gymnasium"/"gym"/"avr" anywhere in the query. */
 function detectFacility(query: string): string | null {
@@ -28,6 +28,7 @@ function detectDate(query: string): string | null {
 }
 
 export function AvailabilitySearch() {
+  const facilities = useFacilities();
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -35,7 +36,7 @@ export function AvailabilitySearch() {
     event.preventDefault();
 
     const params = new URLSearchParams();
-    const facility = detectFacility(query);
+    const facility = facilities.find((item) => query.toLowerCase().includes(item.name.toLowerCase()) || query.toLowerCase().includes(item.shortName.toLowerCase()))?.id ?? detectFacility(query);
     const date = detectDate(query);
 
     if (facility) params.set("facility", facility);
@@ -63,7 +64,7 @@ export function AvailabilitySearch() {
       </button>
 
       <datalist id="venue-suggestions">
-        {FACILITIES.map((facility) => (
+        {facilities.map((facility) => (
           <option key={facility.id} value={facility.name} />
         ))}
       </datalist>

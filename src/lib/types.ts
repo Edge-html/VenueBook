@@ -1,6 +1,6 @@
 import type { Timestamp } from "firebase/firestore";
 
-export type FacilityId = "gymnasium" | "avr";
+export type FacilityId = string;
 
 /**
  * `completed` — the student finished using the venue and closed it out.
@@ -26,6 +26,12 @@ export interface UserProfile {
   email: string;
   phone: string;
   role: Role;
+  grade?: string;
+  section?: string;
+  idPhotoUrl?: string | null;
+  verificationRequired?: boolean;
+  emailOtpVerified?: boolean;
+  assignedFacilityIds?: FacilityId[];
   createdAt?: Timestamp;
 }
 
@@ -57,6 +63,7 @@ export interface Booking {
   purpose: string;
   attendees: number;
   notes: string;
+  equipment?: Record<string, number>;
   createdAt: Timestamp | null;
   reviewedAt?: Timestamp | null;
   reviewedBy?: string | null;

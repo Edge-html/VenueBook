@@ -2,12 +2,14 @@
 
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { AuthLink, AuthShell, FormError } from "@/components/auth-shell";
-import { RedirectIfAuthed } from "@/components/auth-guard";
 import { useAuth } from "@/lib/auth-context";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { formatPhone, isValidMobilePhone, normalizePhone } from "@/lib/phone";
+import { GRADES, SECTION_MAX_LENGTH } from "@/lib/constants";
+import { validateIdPhoto } from "@/lib/data";
 
 interface Errors {
   fullName?: string;
@@ -15,25 +17,27 @@ interface Errors {
   email?: string;
   password?: string;
   confirm?: string;
+  grade?: string;
+  section?: string;
+  idPhoto?: string;
 }
 
 export function SignUpForm() {
-  return (
-    <RedirectIfAuthed>
-      <SignUpFields />
-    </RedirectIfAuthed>
-  );
+  return <SignUpFields />;
 }
 
 function SignUpFields() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, user, initialising } = useAuth();
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [grade, setGrade] = useState("");
+  const [section, setSection] = useState("");
+  const [idPhoto, setIdPhoto] = useState<File | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Errors>({});
@@ -61,6 +65,10 @@ function SignUpFields() {
     }
     if (password.length < 8) next.password = "Use at least 8 characters.";
     if (confirm !== password) next.confirm = "Passwords do not match.";
+    if (!grade) next.grade = "Choose your grade.";
+    if (!section.trim()) next.section = "Enter your section.";
+    if (!idPhoto) next.idPhoto = "Attach your school ID photo.";
+    else next.idPhoto = validateIdPhoto(idPhoto) ?? undefined;
 
     return next;
   }
@@ -74,13 +82,17 @@ function SignUpFields() {
 
     setBusy(true);
     try {
-      await signUp({ fullName, phone, email, password });
-      router.replace("/");
+      if (!idPhoto) return;
+      await signUp({ fullName, phone, email, password, grade, section, idPhoto });
+      router.replace("/verify-email");
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
     }
   }
+
+  if (initialising) return null;
+  if (user && !busy) return <AuthShell title="Account created" subtitle="Verify your email and complete any missing profile details before booking." footer={null}><FormError message={error} /><div className="mt-4 flex flex-wrap gap-2"><Link href="/verify-email" className="btn btn-primary">Enter verification code</Link><Link href="/profile" className="btn btn-outline">Complete profile</Link></div></AuthShell>;
 
   return (
     <AuthShell
@@ -131,6 +143,23 @@ function SignUpFields() {
           autoComplete="email"
           error={fieldErrors.email}
         />
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="grade" className="field-label">Grade</label>
+            <select id="grade" value={grade} onChange={(event) => setGrade(event.target.value)} className="field" aria-invalid={Boolean(fieldErrors.grade)}>
+              <option value="">Select grade</option>
+              {GRADES.map((value) => <option key={value} value={value}>Grade {value}</option>)}
+            </select>
+            <FieldError message={fieldErrors.grade} />
+          </div>
+          <Field id="section" label="Section" value={section} onChange={edit("section", setSection)} placeholder="e.g. STEM 1" error={fieldErrors.section} maxLength={SECTION_MAX_LENGTH} />
+        </div>
+        <div>
+          <label htmlFor="registrationId" className="field-label">School ID photo</label>
+          <input id="registrationId" type="file" accept="image/jpeg,image/png,image/webp" required className="field" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} aria-invalid={Boolean(fieldErrors.idPhoto)} />
+          <FieldError message={fieldErrors.idPhoto} />
+        </div>
 
         <div>
           <label htmlFor="password" className="field-label">
@@ -204,6 +233,7 @@ function Field({
   placeholder?: string;
   inputMode?: "text" | "tel" | "email";
   autoComplete?: string;
+  maxLength?: number;
 }) {
   return (
     <div>

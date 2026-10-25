@@ -17,6 +17,18 @@ export function toMinutes(value: string): number | null {
   return hours * 60 + minutes;
 }
 
+/** Accepts typed values such as 13:00, 1 PM, or 1:30pm. */
+export function parseClockInput(value: string): number | null {
+  const exact = toMinutes(value);
+  if (exact !== null) return exact;
+  const match = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(value.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  if (hour < 1 || hour > 12 || minute > 59) return null;
+  return (hour % 12 + (match[3].toLowerCase() === "pm" ? 12 : 0)) * 60 + minute;
+}
+
 /** 570 → "09:30". */
 export function fromMinutes(total: number): string {
   const hours = Math.floor(total / 60);
@@ -81,7 +93,8 @@ export function formatTimeRangeCompact(start: string, end: string): string {
   const suffix = endMin >= 12 * 60 ? "PM" : "AM";
 
   if (startMin % 60 === 0 && endMin % 60 === 0) {
-    return `${startHour === 0 ? 12 : startHour}–${endHour % 12 === 0 ? 12 : endHour % 12} ${suffix}`;
+    if ((startMin < 12 * 60) !== (endMin < 12 * 60)) return formatTimeRange(start, end);
+    return `${startHour % 12 === 0 ? 12 : startHour % 12}–${endHour % 12 === 0 ? 12 : endHour % 12} ${suffix}`;
   }
 
   return formatTimeRange(start, end);

@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
+  allBookingsQuery,
   markAllNotificationsRead,
   notificationsQueryForUser,
   parseNotificationDoc,
@@ -46,7 +47,7 @@ function relativeTime(createdAt: AppNotification["createdAt"]): string {
 }
 
 export function NotificationList() {
-  const { user } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [busy, setBusy] = useState(false);
 
   // Live: the notification arrives the moment an admin approves or declines.
@@ -58,6 +59,8 @@ export function NotificationList() {
   });
 
   const items = useMemo(() => (live.docs ?? []).map(parseNotificationDoc), [live.docs]);
+  const requestsLive = useLiveQuery({ cacheKey: `notification-admin-requests:${user?.uid ?? "none"}`, enabled: Boolean(user && isAdmin), deps: [user?.uid, isAdmin, profile?.assignedFacilityIds], buildQueries: () => user && isAdmin ? [allBookingsQuery(profile?.assignedFacilityIds)] : [] });
+  const pendingRequests = (requestsLive.docs ?? []).filter((entry) => entry.data().status === "pending").length;
   const loading = live.loading;
 
   async function markAllRead() {
@@ -86,7 +89,7 @@ export function NotificationList() {
               <span className="badge bg-booked text-white">{unread} new</span>
             )}
           </h1>
-          <p className="page-lede">Approval updates from the VenueBook admins.</p>
+          <p className="page-lede">{isAdmin ? "New requests and booking updates." : "Approval updates from the VenueBook admins."}</p>
         </div>
 
         {unread > 0 && (
@@ -96,6 +99,8 @@ export function NotificationList() {
           </button>
         )}
       </header>
+
+      {isAdmin && pendingRequests > 0 && <Link href="/admin" className="banner banner-warning mb-4 block font-medium">{pendingRequests} booking request{pendingRequests === 1 ? "" : "s"} awaiting review. Open Booking Requests →</Link>}
 
       {loading && items.length === 0 ? (
         <div className="space-y-4">

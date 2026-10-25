@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { HeroActions } from "@/components/hero-actions";
 import { HomeAccountSections } from "@/components/home-account-sections";
+import { NonAdminContent } from "@/components/non-admin-content";
+import { AdditionalFacilities } from "@/components/additional-facilities";
 import { SmartImage } from "@/components/smart-image";
 import { TodaysAvailability } from "@/components/todays-availability";
 import { VisitorCta } from "@/components/visitor-cta";
@@ -11,16 +13,13 @@ import { VisitorFeatures } from "@/components/visitor-features";
 import { FACILITIES, HERO_IMAGE } from "@/lib/constants";
 import { resolveImageSources } from "@/lib/image-sources.server";
 
-const FACILITY_ICONS = {
-  gymnasium: Dumbbell,
-  avr: MonitorPlay,
-} as const;
+const FACILITY_ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 export default function LandingPage() {
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+      <NonAdminContent><section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         {/* The photo bleeds to the card edge and takes exactly half of it. A
             gradient off the seam fades paper into the image, so the full-bleed
             reads as one surface instead of a photo dropped into a box. */}
@@ -64,7 +63,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section></NonAdminContent>
 
       {/* ── Two headline features (signed-out visitors only) ──── */}
       <Suspense fallback={null}>
@@ -80,14 +79,14 @@ export default function LandingPage() {
 
       {/* Today's schedule sits where the upcoming reservations used to be —
           it is the more immediately useful of the two. */}
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+      <NonAdminContent><div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
         <Suspense fallback={null}>
           <TodaysAvailability />
         </Suspense>
-      </div>
+      </div></NonAdminContent>
 
       {/* ── Facilities + upcoming reservations ────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <NonAdminContent><section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center gap-4">
           <h2 className="section-title">Our Facilities</h2>
           <span className="section-rule flex-1" />
@@ -95,7 +94,7 @@ export default function LandingPage() {
 
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FACILITIES.map((facility) => {
-            const Icon = FACILITY_ICONS[facility.id];
+            const Icon = FACILITY_ICONS[facility.id] ?? Dumbbell;
 
             return (
               <article key={facility.id} className="card overflow-hidden">
@@ -143,7 +142,8 @@ export default function LandingPage() {
             </Suspense>
           </div>
         </div>
-      </section>
+        <AdditionalFacilities />
+      </section></NonAdminContent>
 
       {/* ── Closing call to action (signed-out visitors only) ── */}
       <Suspense fallback={null}>

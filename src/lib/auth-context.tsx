@@ -31,12 +31,16 @@ import {
 import { auth, db } from "./firebase";
 import { looksLikeEmail, normalizePhone } from "./phone";
 import type { UserProfile } from "./types";
+import { uploadIdPhoto } from "./data";
 
 export interface SignUpInput {
   fullName: string;
   phone: string;
   email: string;
   password: string;
+  grade: string;
+  section: string;
+  idPhoto: File;
 }
 
 interface AuthContextValue {
@@ -81,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         phone: "",
         role: "student",
+        verificationRequired: true,
+        emailOtpVerified: false,
         createdAt: serverTimestamp() as never,
       };
       await setDoc(doc(db, "users", nextUser.uid), seed);
@@ -95,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         phone: "",
         role: "student",
+        verificationRequired: true,
+        emailOtpVerified: false,
       });
     }
   }, []);
@@ -121,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             phone: "",
             role: "student",
+            verificationRequired: true,
+            emailOtpVerified: false,
           });
         } else {
           setProfile(null);
@@ -139,38 +149,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
-  const signUp = useCallback(async ({ fullName, phone, email, password }: SignUpInput) => {
+  const signUp = useCallback(async ({ fullName, phone, email, password, grade, section, idPhoto }: SignUpInput) => {
     const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const phoneE164 = normalizePhone(phone);
-
-    // Phone is unique per person, so a duplicate is a real conflict worth
-    // reporting rather than silently overwriting someone else's account.
-    const existing = await getDocs(
-      query(collection(db, "users"), where("phone", "==", phoneE164)),
-    );
-    if (!existing.empty) {
-      await fbSignOut(auth);
-      throw new Error("That phone number is already linked to an account.");
-    }
-
+    const idPhotoUrl = await uploadIdPhoto(idPhoto, credential.user.uid);
     await updateProfile(credential.user, { displayName: fullName.trim() });
 
     // Never overwrite an existing profile: this can run on a re-signup, and a
     // blanket write would silently reset an admin's role back to student.
     const profileRef = doc(db, "users", credential.user.uid);
-    if (!(await getDoc(profileRef)).exists()) {
+    {
       await setDoc(profileRef, {
         uid: credential.user.uid,
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phoneE164,
+        grade,
+        section: section.trim(),
+        idPhotoUrl,
+        verificationRequired: true,
+        emailOtpVerified: false,
         // Always a student. Admins are promoted deliberately in the Firebase
         // console, never by the client.
         role: "student",
-        createdAt: serverTimestamp(),
-      } satisfies Omit<UserProfile, "createdAt"> & { createdAt: unknown });
+      } satisfies Omit<UserProfile, "createdAt">, { merge: true });
     }
-  }, []);
+    await loadProfile(credential.user);
+  }, [loadProfile]);
 
   const resolveEmail = useCallback(async (identifier: string): Promise<string> => {
     const value = identifier.trim();

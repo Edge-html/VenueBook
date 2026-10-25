@@ -12,6 +12,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { deleteApp, initializeApp } from "firebase/app";
+import { createUserWithEmailAndPassword, deleteUser, getAuth, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { InUseBanner, PhasePill } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
 import { bookingPhase, isNoShowEligible } from "@/lib/booking-phase";
@@ -28,23 +31,27 @@ import {
   parseBlockedSlotDoc,
   parseBookingDoc,
   removeBooking,
+  reportBookingsQuery,
   setBookingStatus,
   unblockSlot,
 } from "@/lib/data";
-import { formatLongDate, formatShortDate, todayKey } from "@/lib/dates";
-import { BOOKING_WINDOW_DAYS, FACILITIES, FACILITY_BY_ID, TIME_BLOCKS } from "@/lib/constants";
+import { addDays, formatLongDate, formatShortDate, toDateKey, todayKey } from "@/lib/dates";
+import { BOOKING_WINDOW_DAYS, FACILITY_BY_ID, TIME_BLOCKS, type Facility } from "@/lib/constants";
+import { useFacilities } from "@/lib/use-facilities";
+import { db, firebaseConfig } from "@/lib/firebase";
 import { formatTimeRange, describeMinutes } from "@/lib/time";
 import type { Booking, BookingStatus, FacilityId } from "@/lib/types";
 import { useLiveQuery } from "@/lib/use-live-query";
 
-const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
-type Tab = "requests" | "schedule";
-type StatusFilter = BookingStatus | "all";
+type Tab = "requests" | "schedule" | "reports";
+type StatusFilter = BookingStatus | "all" | "upcoming";
 
 /** Filter pills, in the order they appear. `all` is the default. */
 const STATUS_FILTERS: StatusFilter[] = [
   "all",
+  "upcoming",
   "pending",
   "approved",
   "completed",
@@ -54,6 +61,7 @@ const STATUS_FILTERS: StatusFilter[] = [
 
 const FILTER_LABELS: Record<StatusFilter, string> = {
   all: "All",
+  upcoming: "Upcoming",
   pending: "Pending",
   approved: "Approved",
   completed: "Completed",
@@ -64,9 +72,18 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
 
 export function AdminConsole() {
   const { profile, user } = useAuth();
+  const allFacilities = useFacilities();
+  const facilities = profile?.assignedFacilityIds?.length ? allFacilities.filter((facility) => profile.assignedFacilityIds?.includes(facility.id)) : allFacilities;
+  const [newVenueName, setNewVenueName] = useState("");
+  const [newVenueCapacity, setNewVenueCapacity] = useState("");
+  const [newVenueDescription, setNewVenueDescription] = useState("");
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminFacility, setNewAdminFacility] = useState("gymnasium");
 
   const [tab, setTab] = useState<Tab>("requests");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [reportPeriod, setReportPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -75,19 +92,22 @@ export function AdminConsole() {
 
   // Schedule editor state.
   const [scheduleFacility, setScheduleFacility] = useState<FacilityId>("gymnasium");
+  const activeScheduleFacility = facilities.some((facility) => facility.id === scheduleFacility) ? scheduleFacility : facilities[0]?.id ?? scheduleFacility;
   const [scheduleDate, setScheduleDate] = useState(todayKey());
   const [blockReason, setBlockReason] = useState("");
 
   const bookingLive = useLiveQuery({
-    cacheKey: "admin-bookings",
-    deps: [],
-    buildQueries: () => [allBookingsQuery()],
+    cacheKey: `admin-bookings:${profile?.uid ?? "none"}`,
+    enabled: Boolean(profile),
+    deps: [profile?.assignedFacilityIds],
+    buildQueries: () => [allBookingsQuery(profile?.assignedFacilityIds)],
   });
 
   const blockLive = useLiveQuery({
-    cacheKey: `admin-blocks:${scheduleFacility}:${scheduleDate}`,
-    deps: [scheduleFacility, scheduleDate],
-    buildQueries: () => [blocksQueryForDate(scheduleFacility, scheduleDate)],
+    cacheKey: `admin-blocks:${activeScheduleFacility}:${scheduleDate}`,
+    enabled: Boolean(profile) && facilities.some((facility) => facility.id === activeScheduleFacility),
+    deps: [activeScheduleFacility, scheduleDate, profile?.assignedFacilityIds],
+    buildQueries: () => [blocksQueryForDate(activeScheduleFacility, scheduleDate)],
   });
 
   const bookings = useMemo(() => (bookingLive.docs ?? []).map(parseBookingDoc), [bookingLive.docs]);
@@ -107,15 +127,49 @@ export function AdminConsole() {
 
   const adminName = profile?.fullName ?? "Admin";
 
+  async function addVenue(event: React.FormEvent) {
+    event.preventDefault();
+    const id = newVenueName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (!id || facilities.some((facility) => facility.id === id)) { setError("Choose a unique venue name."); return; }
+    try {
+      await setDoc(doc(db, "facilities", id), { name: newVenueName.trim(), shortName: newVenueName.trim(), capacity: newVenueCapacity.trim(), description: newVenueDescription.trim(), active: true });
+      setNewVenueName(""); setNewVenueCapacity(""); setNewVenueDescription(""); setToast("Venue added.");
+    } catch { setError("Could not add the venue. Check the database rules."); }
+  }
+
+  async function addAdmin(event: React.FormEvent) {
+    event.preventDefault();
+    if (!facilities.some((facility) => facility.id === newAdminFacility)) { setError("Choose a venue for this admin."); return; }
+    const app = initializeApp(firebaseConfig, `admin-provision-${crypto.randomUUID()}`);
+    const secondaryAuth = getAuth(app);
+    try {
+      const random = Array.from(crypto.getRandomValues(new Uint8Array(24)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const credential = await createUserWithEmailAndPassword(secondaryAuth, newAdminEmail.trim().toLowerCase(), `${random}Aa1!`);
+      try {
+        await setDoc(doc(db, "users", credential.user.uid), { uid: credential.user.uid, fullName: newAdminName.trim(), email: newAdminEmail.trim().toLowerCase(), phone: "", role: "admin", assignedFacilityIds: [newAdminFacility] });
+      } catch (cause) { await deleteUser(credential.user); throw cause; }
+      await sendPasswordResetEmail(secondaryAuth, newAdminEmail.trim().toLowerCase());
+      await signOut(secondaryAuth);
+      setNewAdminName(""); setNewAdminEmail(""); setToast("Venue admin created. Password setup email sent.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not create the admin account."); }
+    finally { await deleteApp(app); }
+  }
+
   const filtered = useMemo(() => {
     return statusFilter === "all"
       ? bookings
-      : bookings.filter((b) => b.status === statusFilter);
+      : statusFilter === "upcoming"
+        ? bookings.filter((b) => b.date >= todayKey() && (b.status === "approved" || b.status === "pending"))
+        : bookings.filter((b) => b.status === statusFilter);
     // `bookings` is a fresh array only when the query re-settles.
   }, [bookings, statusFilter]);
 
   const pendingCount = (bookings ?? []).filter((b) => b.status === "pending").length;
   const today = todayKey();
+  const now = new Date();
+  const reportStart = reportPeriod === "daily" ? today : reportPeriod === "weekly" ? toDateKey(addDays(now, -((now.getDay() + 6) % 7))) : `${today.slice(0, 7)}-01`;
+  const reportLive = useLiveQuery({ cacheKey: `report:${profile?.uid ?? "none"}:${reportStart}:${today}`, enabled: Boolean(profile), deps: [reportStart, today, profile?.assignedFacilityIds], buildQueries: () => [reportBookingsQuery(reportStart, today, profile?.assignedFacilityIds)] });
+  const reportBookings = (reportLive.docs ?? []).map(parseBookingDoc);
   const todayCount = (bookings ?? []).filter(
     (b) => b.date === today && b.status === "approved",
   ).length;
@@ -147,7 +201,7 @@ export function AdminConsole() {
     setError(null);
 
     const note = noteDraft[booking.id] ?? "";
-    const facility = FACILITY_BY_ID[booking.facilityId];
+    const facility = allFacilities.find((item) => item.id === booking.facilityId) ?? FACILITY_BY_ID[booking.facilityId];
     const range = formatTimeRange(booking.startTime, booking.endTime);
     const when = `${formatShortDate(booking.date)} at ${range}`;
 
@@ -209,7 +263,7 @@ export function AdminConsole() {
       const notified = await notifyUser(
         booking.userId,
         "Booking cancelled by admin",
-        `An admin cancelled your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(booking.date)}.`,
+        `An admin cancelled your ${allFacilities.find((item) => item.id === booking.facilityId)?.shortName ?? booking.facilityId} reservation for ${formatShortDate(booking.date)}.`,
         "cancelled",
         booking.id,
       );
@@ -232,7 +286,7 @@ export function AdminConsole() {
       const notified = await notifyUser(
         booking.userId,
         "Marked as a no-show",
-        `Your ${FACILITY_BY_ID[booking.facilityId]?.shortName} reservation for ${formatShortDate(
+        `Your ${allFacilities.find((item) => item.id === booking.facilityId)?.shortName ?? booking.facilityId} reservation for ${formatShortDate(
           booking.date,
         )} was closed as a no-show.`,
         "cancelled",
@@ -263,11 +317,11 @@ export function AdminConsole() {
 
     try {
       if (existing) {
-        await unblockSlot(scheduleFacility, scheduleDate, timeSlot);
+        await unblockSlot(activeScheduleFacility, scheduleDate, timeSlot);
         setToast("Slot reopened.");
       } else {
         await blockSlot(
-          scheduleFacility,
+          activeScheduleFacility,
           scheduleDate,
           timeSlot,
           blockReason,
@@ -292,6 +346,7 @@ export function AdminConsole() {
         <p className="page-lede">
           Review student requests and control the facility schedule. Updates arrive live.
         </p>
+        <p className="mt-2 text-xs text-ink-500">Admin flow: Review pending requests → Check the schedule and equipment → Approve or decline → Monitor upcoming bookings and reports.</p>
       </header>
 
       {/* ── Stats ───────────────────────────────────────────── */}
@@ -309,6 +364,7 @@ export function AdminConsole() {
           [
             { id: "requests" as const, label: "Booking requests" },
             { id: "schedule" as const, label: "Availability & schedule" },
+            { id: "reports" as const, label: "Statistics & reports" },
           ]
         ).map((item) => (
           <button
@@ -368,6 +424,7 @@ export function AdminConsole() {
                 <AdminBookingCard
                   key={booking.id}
                   booking={booking}
+                  facility={facilities.find((item) => item.id === booking.facilityId)}
                   busy={busyId === booking.id}
                   note={noteDraft[booking.id] ?? ""}
                   onNoteChange={(value) =>
@@ -384,6 +441,13 @@ export function AdminConsole() {
             </ul>
           )}
         </>
+      ) : tab === "reports" ? (
+        <section className="card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="section-title">Booking report</h2><p className="text-sm text-ink-500">{formatShortDate(reportStart)} – {formatShortDate(today)}</p></div><select aria-label="Report period" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as "daily" | "weekly" | "monthly")} className="field w-auto"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+          {reportLive.error && <p className="banner banner-error mb-3">Could not load this report. Deploy the new Firestore index first.</p>}
+          <div className="grid gap-3 sm:grid-cols-4">{(["all", "pending", "approved", "rejected"] as const).map((status) => <Stat key={status} label={status === "all" ? "Requests" : status} value={status === "all" ? reportBookings.length : reportBookings.filter((booking) => booking.status === status).length} tone="text-brand-700" />)}</div>
+          <h3 className="mt-6 font-semibold text-ink-900">By venue</h3><div className="mt-2 space-y-2">{facilities.map((facility) => <p key={facility.id} className="flex justify-between border-b border-ink-200 py-2 text-sm"><span>{facility.name}</span><strong>{reportBookings.filter((booking) => booking.facilityId === facility.id).length}</strong></p>)}</div>
+        </section>
       ) : (
         <section className="card p-6">
           <div className="mb-6 grid gap-4 sm:grid-cols-2">
@@ -393,11 +457,11 @@ export function AdminConsole() {
               </label>
               <select
                 id="schedFacility"
-                value={scheduleFacility}
+                value={activeScheduleFacility}
                 onChange={(event) => setScheduleFacility(event.target.value as FacilityId)}
                 className="field"
               >
-                {FACILITIES.map((f) => (
+                {facilities.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name}
                   </option>
@@ -436,7 +500,7 @@ export function AdminConsole() {
           <ul className="space-y-2">
             {TIME_BLOCKS.map((slot) => {
               const block = blocks.find((b) => b.timeSlot === slot.id);
-              const Icon = ICONS[scheduleFacility];
+              const Icon = ICONS[activeScheduleFacility] ?? Dumbbell;
 
               return (
                 <li
@@ -486,6 +550,10 @@ export function AdminConsole() {
           </p>
         </section>
       )}
+
+      {!profile?.assignedFacilityIds?.length && <form onSubmit={addVenue} className="card mt-6 grid gap-3 p-5 sm:grid-cols-3"><div className="sm:col-span-3"><h2 className="section-title">Add a venue</h2><p className="text-xs text-ink-500">New venues appear in booking and availability after saving.</p></div><input aria-label="Venue name" required placeholder="Conference room" value={newVenueName} onChange={(event) => setNewVenueName(event.target.value)} className="field" /><input aria-label="Capacity" required placeholder="Capacity" value={newVenueCapacity} onChange={(event) => setNewVenueCapacity(event.target.value)} className="field" /><input aria-label="Description" required placeholder="Description" value={newVenueDescription} onChange={(event) => setNewVenueDescription(event.target.value)} className="field" /><button type="submit" className="btn btn-primary sm:col-span-3">Add venue</button></form>}
+
+      {!profile?.assignedFacilityIds?.length && <form onSubmit={addAdmin} className="card mt-4 grid gap-3 p-5 sm:grid-cols-3"><div className="sm:col-span-3"><h2 className="section-title">Create venue admin</h2><p className="text-xs text-ink-500">The admin receives an email to set a password and sees only the assigned venue.</p></div><input aria-label="Admin full name" required placeholder="Full name" value={newAdminName} onChange={(event) => setNewAdminName(event.target.value)} className="field" /><input aria-label="Admin email" type="email" required placeholder="Email" value={newAdminEmail} onChange={(event) => setNewAdminEmail(event.target.value)} className="field" /><select aria-label="Assigned venue" value={newAdminFacility} onChange={(event) => setNewAdminFacility(event.target.value)} className="field">{facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}</option>)}</select><button type="submit" className="btn btn-primary sm:col-span-3">Create admin</button></form>}
 
       {toast && (
         <div
@@ -566,6 +634,7 @@ function IdPhotoThumbnail({ photoId }: { photoId: string }) {
 
 function AdminBookingCard({
   booking,
+  facility,
   busy,
   note,
   onNoteChange,
@@ -577,6 +646,7 @@ function AdminBookingCard({
   onComplete,
 }: {
   booking: Booking;
+  facility?: Facility;
   busy: boolean;
   note: string;
   onNoteChange: (value: string) => void;
@@ -587,8 +657,8 @@ function AdminBookingCard({
   onNoShow: () => void;
   onComplete: () => void;
 }) {
-  const facility = FACILITY_BY_ID[booking.facilityId];
-  const Icon = ICONS[booking.facilityId];
+  facility ??= FACILITY_BY_ID[booking.facilityId];
+  const Icon = ICONS[booking.facilityId] ?? Dumbbell;
   const range = formatTimeRange(booking.startTime, booking.endTime);
   const pending = booking.status === "pending";
   const now = new Date();
@@ -596,7 +666,7 @@ function AdminBookingCard({
   const noShowEligible = isNoShowEligible(booking, now);
 
   return (
-    <li className="card p-5 sm:p-6">
+    <li className="card p-4 sm:p-5">
       <div className="flex flex-wrap items-start gap-4">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
           <Icon className="h-6 w-6" />
@@ -639,6 +709,9 @@ function AdminBookingCard({
                 <dt className="shrink-0 text-ink-500">Notes</dt>
                 <dd className="font-medium text-ink-800">{booking.notes}</dd>
               </div>
+            )}
+            {booking.equipment && Object.values(booking.equipment).some((quantity) => quantity > 0) && (
+              <div className="flex gap-2 sm:col-span-2"><dt className="shrink-0 text-ink-500">Equipment</dt><dd className="font-medium text-ink-800">{Object.entries(booking.equipment).filter(([, quantity]) => quantity > 0).map(([name, quantity]) => `${name} × ${quantity}`).join(", ")}</dd></div>
             )}
             {booking.reviewedBy && (
               <div className="flex gap-2 sm:col-span-2">

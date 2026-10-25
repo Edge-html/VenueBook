@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
-import { bookingInstants } from "./dates";
+import { bookingInstants, schoolDayReason } from "./dates";
 import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
 import type {
   AppNotification,
@@ -332,8 +332,17 @@ export function bookingsQueryForUser(uid: string): Query<DocumentData> {
   );
 }
 
-export function allBookingsQuery(): Query<DocumentData> {
-  return query(collection(db, COLLECTIONS.bookings), orderBy("createdAt", "desc"), limit(300));
+export function allBookingsQuery(assignedFacilityIds?: FacilityId[]): Query<DocumentData> {
+  return assignedFacilityIds?.length
+    ? query(collection(db, COLLECTIONS.bookings), where("facilityId", "in", assignedFacilityIds.slice(0, 30)), orderBy("createdAt", "desc"), limit(300))
+    : query(collection(db, COLLECTIONS.bookings), orderBy("createdAt", "desc"), limit(300));
+}
+
+export function reportBookingsQuery(start: string, end: string, assignedFacilityIds?: FacilityId[]): Query<DocumentData> {
+  const base = collection(db, COLLECTIONS.bookings);
+  return assignedFacilityIds?.length
+    ? query(base, where("facilityId", "in", assignedFacilityIds.slice(0, 30)), where("date", ">=", start), where("date", "<=", end))
+    : query(base, where("date", ">=", start), where("date", "<=", end));
 }
 
 export function notificationsQueryForUser(uid: string): Query<DocumentData> {
@@ -382,6 +391,7 @@ export interface NewBookingInput {
   grade: string;
   section: string;
   idPhotoUrl: string | null;
+  equipment: Record<string, number>;
   purpose: string;
   attendees: number;
   notes: string;
@@ -396,6 +406,8 @@ class ScheduleChangedError extends Error {
 
 export async function createBooking(input: NewBookingInput): Promise<string> {
   const { startTime, endTime, date, ...rest } = input;
+  const closedReason = schoolDayReason(date);
+  if (closedReason) throw new Error(closedReason);
 
   // Absolute instants alongside the wall-clock strings: the security rules can
   // compare these against `request.time`, which rules out a past booking even
@@ -816,7 +828,8 @@ export async function removeBooking(booking: Booking): Promise<void> {
       updatedAt: serverTimestamp(),
     });
   });
-  await removeUploadedIdPhoto(booking.idPhotoUrl);
+  // The ID is now stored on the student's profile and can be shared by later
+  // reservations. Removing one booking must not delete that profile photo.
 }
 
 /* ── Notifications ─────────────────────────────────────────────────────── */
@@ -939,6 +952,7 @@ function parseBooking(id: string, data: DocumentData): Booking {
     purpose: (data.purpose as string) ?? "",
     attendees: (data.attendees as number) ?? 0,
     notes: (data.notes as string) ?? "",
+    equipment: (data.equipment as Record<string, number>) ?? {},
     createdAt: data.createdAt ?? null,
     reviewedAt: data.reviewedAt ?? null,
     reviewedBy: (data.reviewedBy as string | null) ?? null,

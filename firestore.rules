@@ -15,6 +15,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isSuperAdmin() {
+      return isAdmin()
+        && (!('assignedFacilityIds' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedFacilityIds.size() == 0);
+    }
+
+    function isFacilityAdmin(facilityId) {
+      return isSuperAdmin()
+        || (isAdmin()
+            && facilityId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedFacilityIds);
+    }
+
+    function bookingProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function bookingAfter(bookingId) {
       return getAfter(/databases/$(database)/documents/bookings/$(bookingId));
     }
@@ -28,27 +44,63 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSelf(uid) || isAdmin();
-      allow create: if isSelf(uid) && request.resource.data.role == 'student';
-      allow update: if isAdmin()
+      allow read: if isSelf(uid) || isSuperAdmin();
+      allow create: if (isSelf(uid) && request.resource.data.role == 'student')
+                    || (isSuperAdmin() && request.resource.data.role == 'admin'
+                        && request.resource.data.assignedFacilityIds is list
+                        && request.resource.data.assignedFacilityIds.size() > 0);
+      allow update: if isSuperAdmin()
                     || (isSelf(uid)
                         && request.resource.data.role == resource.data.role
+                        && request.resource.data.get('emailOtpVerified', false)
+                            == resource.data.get('emailOtpVerified', false)
+                        && (!('verificationRequired' in resource.data)
+                            || resource.data.verificationRequired != true
+                            || request.resource.data.verificationRequired == true)
                         && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['fullName', 'phone']));
-      allow delete: if isAdmin();
+                            .hasOnly(['fullName', 'phone', 'grade', 'section', 'idPhotoUrl', 'verificationRequired', 'emailOtpVerified']));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /facilities/{facilityId} {
+      allow read: if true;
+      allow create, update: if isSuperAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.capacity is string;
+      allow delete: if isSuperAdmin();
     }
 
     // Reservation details are private. Students can only read their own records.
     match /bookings/{bookingId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow read: if isFacilityAdmin(resource.data.facilityId) || (isSignedIn() && resource.data.userId == request.auth.uid);
 
       // A booking and its minimal public schedule projection must be written
       // together, so the calendar never needs access to personal details.
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid
+                    && bookingProfile().data.grade == request.resource.data.grade
+                    && bookingProfile().data.section == request.resource.data.section
+                    && bookingProfile().data.idPhotoUrl == request.resource.data.idPhotoUrl
+                    && request.resource.data.idPhotoUrl is string
+                    && exists(/databases/$(database)/documents/idPhotos/$(request.resource.data.idPhotoUrl))
+                    && get(/databases/$(database)/documents/idPhotos/$(request.resource.data.idPhotoUrl)).data.ownerId == request.auth.uid
+                    && (!('verificationRequired' in bookingProfile().data)
+                        || bookingProfile().data.verificationRequired != true
+                        || bookingProfile().data.emailOtpVerified == true)
                     && request.resource.data.status == 'pending'
                     && request.resource.data.startAt is timestamp
                     && request.resource.data.startAt > request.time
+                    && (request.resource.data.startAt + duration.value(8, 'h')).dayOfWeek() <= 5
+                    && request.resource.data.date >= '2026-06-08'
+                    && request.resource.data.date <= '2027-04-08'
+                    && !(request.resource.data.date >= '2026-12-19'
+                         && request.resource.data.date <= '2027-01-03')
+                    && !(request.resource.data.date in [
+                      '2026-06-12', '2026-08-21', '2026-08-31', '2026-11-02',
+                      '2026-11-30', '2026-12-08', '2026-12-24',
+                      '2026-12-25', '2026-12-30', '2026-12-31', '2027-01-01',
+                      '2027-03-25', '2027-03-26'
+                    ])
                     && existsAfter(/databases/$(database)/documents/availability/$(bookingId))
                     && availabilityAfter(bookingId).data.facilityId == request.resource.data.facilityId
                     && availabilityAfter(bookingId).data.date == request.resource.data.date
@@ -64,20 +116,20 @@ service cloud.firestore {
                     && availabilityAfter(bookingId).data.startTime == request.resource.data.startTime
                     && availabilityAfter(bookingId).data.endTime == request.resource.data.endTime
                     && availabilityAfter(bookingId).data.status == request.resource.data.status
-                    && (isAdmin()
+                    && (isFacilityAdmin(resource.data.facilityId)
                         || (isSignedIn()
                             && resource.data.userId == request.auth.uid
                             && request.resource.data.diff(resource.data).affectedKeys()
                                 .hasOnly(['status', 'completedAt'])
                             && request.resource.data.status in ['cancelled', 'completed']));
-      allow delete: if isAdmin()
+      allow delete: if isFacilityAdmin(resource.data.facilityId)
                     && !existsAfter(/databases/$(database)/documents/availability/$(bookingId));
     }
 
     // Only facility, date, time, and status are public to signed-in users.
     match /availability/{bookingId} {
       allow read: if isSignedIn();
-      allow create, update: if isAdmin()
+      allow create, update: if isFacilityAdmin(request.resource.data.facilityId)
                     || (isSignedIn()
                         && existsAfter(/databases/$(database)/documents/bookings/$(bookingId))
                         && bookingAfter(bookingId).data.userId == request.auth.uid
@@ -86,20 +138,20 @@ service cloud.firestore {
                         && bookingAfter(bookingId).data.startTime == request.resource.data.startTime
                         && bookingAfter(bookingId).data.endTime == request.resource.data.endTime
                         && bookingAfter(bookingId).data.status == request.resource.data.status);
-      allow delete: if isAdmin()
+      allow delete: if isFacilityAdmin(resource.data.facilityId)
                     && !existsAfter(/databases/$(database)/documents/bookings/$(bookingId));
     }
 
     // The day revision serializes same-day reservation transactions.
     match /scheduleDays/{dayId} {
       allow read: if isSignedIn();
-      allow create, update: if isAdmin()
+      allow create, update: if isFacilityAdmin(request.resource.data.facilityId)
                     || (isSignedIn()
                         && existsAfter(/databases/$(database)/documents/bookings/$(request.resource.data.lastBookingId))
                         && bookingAfter(request.resource.data.lastBookingId).data.userId == request.auth.uid
                         && bookingAfter(request.resource.data.lastBookingId).data.facilityId == request.resource.data.facilityId
                         && bookingAfter(request.resource.data.lastBookingId).data.date == request.resource.data.date);
-      allow delete: if isAdmin();
+      allow delete: if isFacilityAdmin(resource.data.facilityId);
     }
 
     match /idPhotos/{photoId} {
@@ -114,7 +166,8 @@ service cloud.firestore {
 
     match /blockedSlots/{slotId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, update: if isFacilityAdmin(request.resource.data.facilityId);
+      allow delete: if isFacilityAdmin(resource.data.facilityId);
     }
 
     match /notifications/{notificationId} {

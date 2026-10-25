@@ -10,10 +10,12 @@ import { bookingsQueryForUser, parseBookingDoc } from "@/lib/data";
 import { formatShortDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
 import { useLiveQuery } from "@/lib/use-live-query";
+import { useFacilities } from "@/lib/use-facilities";
 
-const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 export function DashboardOverview() {
+  const facilities = useFacilities();
   const { user } = useAuth();
 
   // Live: an approval moves a pending request into this list without a refresh.
@@ -61,8 +63,8 @@ export function DashboardOverview() {
       ) : (
         <ul className="space-y-2">
           {upcoming.map((booking) => {
-            const facility = FACILITY_BY_ID[booking.facilityId];
-            const Icon = ICONS[booking.facilityId];
+            const facility = facilities.find((item) => item.id === booking.facilityId) ?? FACILITY_BY_ID[booking.facilityId];
+            const Icon = ICONS[booking.facilityId] ?? Dumbbell;
             const range = formatTimeRange(booking.startTime, booking.endTime);
 
             return (

@@ -6,6 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { FULL_LEGEND, SlotChip } from "@/components/status-pill";
 import { BOOKING_WINDOW_DAYS, FACILITIES, TIME_BLOCKS } from "@/lib/constants";
+import { useFacilities } from "@/lib/use-facilities";
+import { schoolDayReason } from "@/lib/dates";
+import { formatTimeRange } from "@/lib/time";
 import {
   blocksQueriesForDates,
   bookingsQueriesForDates,
@@ -27,7 +30,7 @@ import { describeLoadError } from "@/lib/load-errors";
 import { describeMinutes } from "@/lib/time";
 import { useLiveQuery } from "@/lib/use-live-query";
 
-const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 /** Renders a day cell as a row of mini bars, one per time slot. */
 const SEGMENT_STYLES: Record<SlotState, string> = {
@@ -38,12 +41,13 @@ const SEGMENT_STYLES: Record<SlotState, string> = {
 };
 
 export function AvailabilityCalendar() {
+  const facilities = useFacilities();
   const searchParams = useSearchParams();
   const initialFacility = searchParams.get("facility");
   const initialDate = searchParams.get("date");
 
   const [facilityId, setFacilityId] = useState<FacilityId>(
-    initialFacility === "avr" ? "avr" : "gymnasium",
+    initialFacility || "gymnasium",
   );
 
   const [month, setMonth] = useState(() => {
@@ -110,8 +114,8 @@ export function AvailabilityCalendar() {
   const canGoForward = toDateKey(new Date(month.getFullYear(), month.getMonth() + 1, 1)) <= maxDate;
 
   const selectedSlots = data?.[selected];
-  const facility = FACILITIES.find((f) => f.id === facilityId)!;
-  const SelectedIcon = ICONS[facilityId];
+  const facility = facilities.find((f) => f.id === facilityId) ?? FACILITIES[0];
+  const SelectedIcon = ICONS[facilityId] ?? Dumbbell;
 
   return (
     <div className="animate-fade-up">
@@ -135,8 +139,8 @@ export function AvailabilityCalendar() {
 
       {/* ── Facility switch ─────────────────────────────────── */}
       <div className="mb-6 inline-flex rounded-lg bg-ink-100 p-1">
-        {FACILITIES.map((option) => {
-          const Icon = ICONS[option.id];
+        {facilities.map((option) => {
+          const Icon = ICONS[option.id] ?? Dumbbell;
           const active = option.id === facilityId;
 
           return (
@@ -197,7 +201,7 @@ export function AvailabilityCalendar() {
             {grid.map((day) => {
               const key = toDateKey(day);
               const inMonth = day.getMonth() === currentMonth;
-              const bookable = key >= today && key <= maxDate;
+              const bookable = key >= today && key <= maxDate && !schoolDayReason(key);
               const slots = data?.[key];
               const isSelected = key === selected;
 
@@ -208,7 +212,8 @@ export function AvailabilityCalendar() {
                   disabled={!bookable}
                   onClick={() => setSelected(key)}
                   aria-pressed={isSelected}
-                  aria-label={formatLongDate(key)}
+                  aria-label={`${formatLongDate(key)}${schoolDayReason(key) ? `: ${schoolDayReason(key)}` : ""}`}
+                  title={schoolDayReason(key) ?? undefined}
                   className={`flex flex-col items-center gap-1.5 rounded-md px-1 py-2 transition-colors ${
                     isSelected
                       ? "bg-brand-700 text-white"
@@ -249,6 +254,7 @@ export function AvailabilityCalendar() {
                             <span key={i} className="h-full flex-1 bg-ink-200" />
                           ))}
                   </span>
+                  {schoolDayReason(key) && inMonth && <span className="text-[9px] leading-none">Closed</span>}
                 </button>
               );
             })}
@@ -270,6 +276,7 @@ export function AvailabilityCalendar() {
                 {facility.name}
               </h2>
               <p className="text-xs text-ink-500">{formatLongDate(selected)}</p>
+              {schoolDayReason(selected) && <p className="text-xs font-medium text-booked">{schoolDayReason(selected)}</p>}
             </div>
           </div>
 
@@ -279,6 +286,7 @@ export function AvailabilityCalendar() {
             </p>
           )}
 
+          {(bookingLive.docs ?? []).map(parseScheduleEntryDoc).filter((entry) => entry.date === selected && (entry.status === "approved" || entry.status === "pending")).length > 0 && <div className="mb-4 rounded-lg bg-ink-100 p-3 text-sm text-ink-700"><strong>Exact reserved times</strong>{(bookingLive.docs ?? []).map(parseScheduleEntryDoc).filter((entry) => entry.date === selected && (entry.status === "approved" || entry.status === "pending")).map((entry) => <p key={entry.id}>{formatTimeRange(entry.startTime, entry.endTime)} · {entry.status === "approved" ? "Booked" : "Pending"}</p>)}</div>}
           {error ? (
             <div className="space-y-2">
               {TIME_BLOCKS.map((slot) => (
@@ -321,7 +329,8 @@ export function AvailabilityCalendar() {
 
           <Link
             href={`/book?facility=${facilityId}&date=${selected}`}
-            className="btn btn-primary mt-6 w-full"
+            aria-disabled={Boolean(schoolDayReason(selected))}
+            className={`btn btn-primary mt-6 w-full ${schoolDayReason(selected) ? "pointer-events-none opacity-50" : ""}`}
           >
             Book this facility
           </Link>

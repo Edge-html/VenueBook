@@ -8,6 +8,8 @@ import { FullPageLoader } from "@/components/auth-guard";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { formatPhone, isValidMobilePhone, normalizePhone } from "@/lib/phone";
+import { GRADES, SECTION_MAX_LENGTH } from "@/lib/constants";
+import { uploadIdPhoto, validateIdPhoto } from "@/lib/data";
 import type { UserProfile } from "@/lib/types";
 
 export function ProfileCard() {
@@ -26,6 +28,9 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
 
   const [fullName, setFullName] = useState(profile.fullName);
   const [phone, setPhone] = useState(profile.phone);
+  const [grade, setGrade] = useState(profile.grade ?? "");
+  const [section, setSection] = useState(profile.section ?? "");
+  const [idPhoto, setIdPhoto] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,15 +43,24 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
       setError("Enter a valid 10-digit mobile number.");
       return;
     }
+    if (!isAdmin && (!grade || !section.trim() || (!idPhoto && !profile.idPhotoUrl))) {
+      setError("Grade, section, and a school ID photo are required.");
+      return;
+    }
+    if (idPhoto) {
+      const problem = validateIdPhoto(idPhoto);
+      if (problem) { setError(problem); return; }
+    }
 
     setSaving(true);
     setMessage(null);
     setError(null);
 
     try {
+      const idPhotoUrl = idPhoto ? await uploadIdPhoto(idPhoto, user.uid) : profile.idPhotoUrl ?? null;
       await setDoc(
         doc(db, "users", user.uid),
-        { fullName: fullName.trim(), phone: normalizePhone(phone) },
+        { fullName: fullName.trim(), phone: normalizePhone(phone), grade, section: section.trim(), idPhotoUrl },
         { merge: true },
       );
 
@@ -141,6 +155,11 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
             </p>
           </div>
 
+          {!isAdmin && <div className="grid gap-3 sm:grid-cols-2">
+            <div><label htmlFor="profileGrade" className="field-label">Grade</label><select id="profileGrade" value={grade} onChange={(event) => setGrade(event.target.value)} className="field"><option value="">Select grade</option>{GRADES.map((value) => <option key={value} value={value}>Grade {value}</option>)}</select></div>
+            <div><label htmlFor="profileSection" className="field-label">Section</label><input id="profileSection" value={section} maxLength={SECTION_MAX_LENGTH} onChange={(event) => setSection(event.target.value)} className="field" /></div>
+            <div className="sm:col-span-2"><label htmlFor="profileId" className="field-label">School ID photo {profile.idPhotoUrl ? "(on file)" : "(required)"}</label><input id="profileId" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} className="field" /></div>
+          </div>}
           <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-5">
             <button type="submit" disabled={saving} className="btn btn-primary">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}

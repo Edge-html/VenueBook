@@ -4,7 +4,8 @@ import { CalendarDays, Clock, Dumbbell, MonitorPlay } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { FACILITIES, OPENING_HOURS_LABEL, TIME_BLOCKS } from "@/lib/constants";
+import { OPENING_HOURS_LABEL, TIME_BLOCKS } from "@/lib/constants";
+import { useFacilities } from "@/lib/use-facilities";
 import {
   blocksQueriesForDates,
   bookingsQueriesForDates,
@@ -42,6 +43,8 @@ function useNow(enabled: boolean): Date | null {
 }
 
 export function TodaysAvailability() {
+  const facilities = useFacilities();
+  const facilityKey = facilities.map((facility) => facility.id).join(",");
   // The page is statically prerendered, so "today" must not be baked into the
   // HTML — otherwise it goes stale and mismatches the client on any day after
   // the build.
@@ -53,23 +56,17 @@ export function TodaysAvailability() {
 
   // Live: an approval, a closure or a no-show lands here without a refresh.
   const bookingLive = useLiveQuery({
-    cacheKey: `today-bookings:${date}:${signedIn}`,
+    cacheKey: `today-bookings:${date}:${signedIn}:${facilityKey}`,
     enabled: signedIn && Boolean(date),
-    deps: [date],
-    buildQueries: () => [
-      ...bookingsQueriesForDates("gymnasium", [date]),
-      ...bookingsQueriesForDates("avr", [date]),
-    ],
+    deps: [date, facilityKey],
+    buildQueries: () => facilities.flatMap((facility) => bookingsQueriesForDates(facility.id, [date])),
   });
 
   const blockLive = useLiveQuery({
-    cacheKey: `today-blocks:${date}:${signedIn}`,
+    cacheKey: `today-blocks:${date}:${signedIn}:${facilityKey}`,
     enabled: signedIn && Boolean(date),
-    deps: [date],
-    buildQueries: () => [
-      ...blocksQueriesForDates("gymnasium", [date]),
-      ...blocksQueriesForDates("avr", [date]),
-    ],
+    deps: [date, facilityKey],
+    buildQueries: () => facilities.flatMap((facility) => blocksQueriesForDates(facility.id, [date])),
   });
 
   const error = bookingLive.error ?? blockLive.error;
@@ -80,7 +77,7 @@ export function TodaysAvailability() {
     const blocks = (blockLive.docs ?? []).map(parseBlockedSlotDoc);
 
     return Object.fromEntries(
-      FACILITIES.map((facility) => [
+      facilities.map((facility) => [
         facility.id,
         foldBlocksIntoSlots(
           bookings.filter((b) => b.facilityId === facility.id),
@@ -89,7 +86,7 @@ export function TodaysAvailability() {
         ),
       ]),
     ) as Record<string, Record<string, SlotState>>;
-  }, [bookingLive.docs, blockLive.docs, date]);
+  }, [bookingLive.docs, blockLive.docs, date, facilities]);
 
   return (
     <section className="card card-pad">
@@ -148,8 +145,8 @@ export function TodaysAvailability() {
             </Link>
           </div>
         ) : (
-          FACILITIES.map((facility) => {
-            const Icon = FACILITY_ICONS[facility.id];
+          facilities.map((facility) => {
+            const Icon = FACILITY_ICONS[facility.id] ?? Dumbbell;
             const daySlots = slotsByFacility[facility.id];
 
             if (error) {

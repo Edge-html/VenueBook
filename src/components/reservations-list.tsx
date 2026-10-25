@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 import { PhasePill, InUseBanner } from "@/components/phase-pill";
 import { useAuth } from "@/lib/auth-context";
 import { canMarkCompleted, bookingPhase } from "@/lib/booking-phase";
-import { FACILITY_BY_ID } from "@/lib/constants";
+import { FACILITY_BY_ID, type Facility } from "@/lib/constants";
+import { useFacilities } from "@/lib/use-facilities";
 import {
   bookingsQueryForUser,
   cancelBooking,
@@ -18,11 +19,12 @@ import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
 import { useLiveQuery } from "@/lib/use-live-query";
 
-const ICONS = { gymnasium: Dumbbell, avr: MonitorPlay } as const;
+const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 type Filter = "all" | "upcoming" | "past";
 
 export function ReservationsList() {
+  const facilities = useFacilities();
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>("upcoming");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export function ReservationsList() {
             <ReservationCard
               key={booking.id}
               booking={booking}
+              facility={facilities.find((item) => item.id === booking.facilityId)}
               onCancel={() => handleCancel(booking)}
               onComplete={() => handleComplete(booking)}
               cancelling={busyId === booking.id}
@@ -156,19 +159,21 @@ export function ReservationsList() {
 
 function ReservationCard({
   booking,
+  facility,
   onCancel,
   onComplete,
   cancelling,
   userId,
 }: {
   booking: Booking;
+  facility?: Facility;
   onCancel: () => void;
   onComplete: () => void;
   cancelling: boolean;
   userId: string;
 }) {
-  const facility = FACILITY_BY_ID[booking.facilityId];
-  const Icon = ICONS[booking.facilityId];
+  facility ??= FACILITY_BY_ID[booking.facilityId];
+  const Icon = ICONS[booking.facilityId] ?? Dumbbell;
   const range = formatTimeRange(booking.startTime, booking.endTime);
 
   const now = new Date();
@@ -215,6 +220,7 @@ function ReservationCard({
               <dt className="shrink-0 text-ink-500">Attendees</dt>
               <dd className="font-medium text-ink-800">{booking.attendees}</dd>
             </div>
+            {booking.equipment && Object.values(booking.equipment).some((quantity) => quantity > 0) && <div className="flex gap-2 sm:col-span-2"><dt className="shrink-0 text-ink-500">Equipment</dt><dd className="font-medium text-ink-800">{Object.entries(booking.equipment).filter(([, quantity]) => quantity > 0).map(([name, quantity]) => `${name} × ${quantity}`).join(", ")}</dd></div>}
             {booking.adminNote && (
               <div className="flex gap-2">
                 <dt className="shrink-0 text-ink-500">Admin note</dt>

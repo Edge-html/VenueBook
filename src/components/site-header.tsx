@@ -17,6 +17,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { allBookingsQuery, notificationsQueryForUser } from "@/lib/data";
+import { useLiveQuery } from "@/lib/use-live-query";
 import { Logo } from "./logo";
 
 const LINKS = [
@@ -27,6 +29,10 @@ const LINKS = [
 ];
 
 const HOME_LINKS = [{ href: "/", label: "Home", icon: LayoutDashboard }, ...LINKS];
+const ADMIN_LINKS = [
+  { href: "/admin", label: "Booking Requests", icon: ClipboardList },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+];
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -34,6 +40,11 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const adminBookings = useLiveQuery({ cacheKey: `header-admin-bookings:${user?.uid ?? "none"}`, enabled: Boolean(user && isAdmin), deps: [user?.uid, isAdmin, profile?.assignedFacilityIds], buildQueries: () => user && isAdmin ? [allBookingsQuery(profile?.assignedFacilityIds)] : [] });
+  const notices = useLiveQuery({ cacheKey: `header-notices:${user?.uid ?? "none"}`, enabled: Boolean(user), deps: [user?.uid], buildQueries: () => user ? [notificationsQueryForUser(user.uid)] : [] });
+  const pendingCount = isAdmin ? (adminBookings.docs ?? []).filter((entry) => entry.data().status === "pending").length : 0;
+  const unreadCount = (notices.docs ?? []).filter((entry) => !entry.data().read).length;
+  const navLinks = user && isAdmin ? ADMIN_LINKS : user ? HOME_LINKS : [{ href: "/", label: "Home", icon: LayoutDashboard }];
 
   // Any navigation should leave the menus closed; links close them on click.
   const closeMenus = () => {
@@ -74,7 +85,7 @@ export function SiteHeader() {
             That keeps every destination one click away at any width, and
             guarantees a label never breaks across two lines. */}
         <nav className="ml-auto hidden items-center gap-1 lg:flex">
-          {HOME_LINKS.map(({ href, label, icon: Icon }) => {
+          {navLinks.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? isHome : pathname === href;
             return (
               <Link
@@ -91,6 +102,8 @@ export function SiteHeader() {
               >
                 <Icon className={`h-4 w-4 shrink-0 ${active ? "text-brand-700" : "text-ink-400"}`} />
                 <span className="hidden xl:inline">{label}</span>
+                {href === "/admin" && pendingCount > 0 && <span className="badge bg-booked text-white">{pendingCount}</span>}
+                {href === "/notifications" && unreadCount > 0 && <span className="badge bg-booked text-white">{unreadCount}</span>}
               </Link>
             );
           })}
@@ -203,7 +216,7 @@ export function SiteHeader() {
               <LayoutDashboard className="h-4 w-4" />
               Home
             </Link>
-            {LINKS.map(({ href, label, icon: Icon }) => (
+            {(user && isAdmin ? ADMIN_LINKS : user ? LINKS : []).map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -217,6 +230,8 @@ export function SiteHeader() {
               >
                 <Icon className="h-4 w-4" />
                 {label}
+                {href === "/admin" && pendingCount > 0 && <span className="badge bg-booked text-white">{pendingCount}</span>}
+                {href === "/notifications" && unreadCount > 0 && <span className="badge bg-booked text-white">{unreadCount}</span>}
               </Link>
             ))}
 
