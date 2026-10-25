@@ -30,6 +30,7 @@ import {
   ensureSchoolCalendar,
   fetchIdPhoto,
   markBookingCompleted,
+  markBookingInUse,
   markBookingNoShow,
   notifyUser,
   parseBlockedSlotDoc,
@@ -53,7 +54,7 @@ import { downloadBookingsCsv } from "@/lib/exports";
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 type Tab = "requests" | "schedule" | "reports" | "calendar" | "history";
-type StatusFilter = BookingStatus | "all" | "upcoming";
+type StatusFilter = BookingStatus | "all" | "upcoming" | "warnings";
 
 /** Filter pills, in the order they appear. `all` is the default. */
 const STATUS_FILTERS: StatusFilter[] = [
@@ -63,6 +64,7 @@ const STATUS_FILTERS: StatusFilter[] = [
   "approved",
   "completed",
   "no_show",
+  "warnings",
   "rejected",
 ];
 
@@ -73,6 +75,7 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
   approved: "Approved",
   completed: "Completed",
   no_show: "No show",
+  warnings: "Warnings",
   rejected: "Rejected",
   cancelled: "Cancelled",
 };
@@ -92,6 +95,7 @@ export function AdminConsole() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [reportPeriod, setReportPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [warningSelection, setWarningSelection] = useState<Record<string, boolean>>({});
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -167,6 +171,8 @@ export function AdminConsole() {
       ? bookings
       : statusFilter === "upcoming"
         ? bookings.filter((b) => b.date >= todayKey() && (b.status === "approved" || b.status === "pending"))
+        : statusFilter === "warnings"
+          ? bookings.filter((b) => Boolean(b.warningIssuedAt))
         : bookings.filter((b) => b.status === statusFilter);
     // `bookings` is a fresh array only when the query re-settles.
   }, [bookings, statusFilter]);
@@ -293,27 +299,42 @@ export function AdminConsole() {
     }
   }
 
-  async function handleNoShow(booking: Booking) {
-    if (!window.confirm("Release this slot as a no-show? The venue becomes bookable again.")) {
+  async function handleNoShow(booking: Booking, issueWarning: boolean) {
+    if (!window.confirm(`Release this slot as a no-show? The venue becomes bookable again.${issueWarning ? " A warning notification will be sent to the student." : ""}`)) {
       return;
     }
 
     setBusyId(booking.id);
     try {
       if (!user) throw new Error("Sign in again to continue.");
-      await markBookingNoShow(booking.id, { uid: user.uid, name: adminName });
+      await markBookingNoShow(booking.id, { uid: user.uid, name: adminName }, issueWarning);
       const notified = await notifyUser(
         booking.userId,
-        "Marked as a no-show",
-        `Your ${allFacilities.find((item) => item.id === booking.facilityId)?.shortName ?? booking.facilityId} reservation for ${formatShortDate(
-          booking.date,
-        )} was closed as a no-show.`,
-        "cancelled",
+        issueWarning ? "No-show warning issued" : "Reservation marked as a no-show",
+        issueWarning
+          ? `An administrator recorded a no-show warning for your ${allFacilities.find((item) => item.id === booking.facilityId)?.shortName ?? booking.facilityId} reservation on ${formatShortDate(booking.date)}. Contact the school office if you believe this is incorrect.`
+          : `Your ${allFacilities.find((item) => item.id === booking.facilityId)?.shortName ?? booking.facilityId} reservation for ${formatShortDate(booking.date)} was closed as a no-show and the time was released.`,
+        issueWarning ? "warning" : "cancelled",
         booking.id,
       );
       setToast(notified ? "Slot released and student notified." : "Slot released, but the student notification could not be delivered.");
+      setWarningSelection((current) => ({ ...current, [booking.id]: false }));
     } catch {
       setError("Could not release that slot.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleInUse(booking: Booking) {
+    setBusyId(booking.id);
+    setError(null);
+    try {
+      if (!user) throw new Error("Sign in again to continue.");
+      await markBookingInUse(booking.id, { uid: user.uid, name: adminName });
+      setToast("Booking marked in use.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not mark the booking in use.");
     } finally {
       setBusyId(null);
     }
@@ -456,7 +477,10 @@ export function AdminConsole() {
                   onReject={() => review(booking, "rejected")}
                   onCancel={() => handleCancelApproved(booking)}
                   onRemove={() => handleRemove(booking)}
-                  onNoShow={() => handleNoShow(booking)}
+                  onNoShow={(issueWarning) => handleNoShow(booking, issueWarning)}
+                  onWarningChange={(checked) => setWarningSelection((current) => ({ ...current, [booking.id]: checked }))}
+                  issueWarning={warningSelection[booking.id] ?? false}
+                  onInUse={() => handleInUse(booking)}
                   onComplete={() => handleComplete(booking)}
                 />
               ))}
@@ -673,6 +697,9 @@ function AdminBookingCard({
   onCancel,
   onRemove,
   onNoShow,
+  onWarningChange,
+  issueWarning,
+  onInUse,
   onComplete,
 }: {
   booking: Booking;
@@ -684,7 +711,10 @@ function AdminBookingCard({
   onReject: () => void;
   onCancel: () => void;
   onRemove: () => void;
-  onNoShow: () => void;
+  onNoShow: (issueWarning: boolean) => void;
+  onWarningChange: (checked: boolean) => void;
+  issueWarning: boolean;
+  onInUse: () => void;
   onComplete: () => void;
 }) {
   facility ??= FACILITY_BY_ID[booking.facilityId];
@@ -716,6 +746,7 @@ function AdminBookingCard({
           </p>
 
           {phase === "in_use" && <InUseBanner booking={booking} />}
+          {booking.warningIssuedAt && <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900"><AlertTriangle className="h-3.5 w-3.5" /> No-show warning issued</p>}
 
           {noShowEligible && (
             <div className="banner banner-warning mt-4 flex flex-wrap items-center gap-2">
@@ -790,6 +821,13 @@ function AdminBookingCard({
               Cancel booking
             </button>
 
+            {phase === "in_use" && !booking.inUseAt && (
+              <button type="button" onClick={onInUse} disabled={busy} className="btn btn-primary">
+                <Check className="h-4 w-4" />
+                {busy ? "Updating…" : "In Use"}
+              </button>
+            )}
+
             {phase === "over" && (
               <button type="button" onClick={onComplete} disabled={busy} className="btn btn-outline">
                 <Check className="h-4 w-4" />
@@ -798,15 +836,16 @@ function AdminBookingCard({
             )}
 
             {noShowEligible && (
-              <button
-                type="button"
-                onClick={onNoShow}
-                disabled={busy}
-                className="btn btn-warning"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                {busy ? "Releasing…" : "Mark no-show & release"}
-              </button>
+              <>
+                <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+                  <input type="checkbox" checked={issueWarning} onChange={(event) => onWarningChange(event.target.checked)} disabled={busy} />
+                  Send warning notification
+                </label>
+                <button type="button" onClick={() => onNoShow(issueWarning)} disabled={busy} className="btn btn-warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  {busy ? "Releasing…" : "No Show & release"}
+                </button>
+              </>
             )}
           </>
         ) : null}

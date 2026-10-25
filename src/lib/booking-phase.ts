@@ -13,6 +13,7 @@ export function bookingPhase(booking: Booking, now: Date = new Date()): BookingP
   if (booking.status === "no_show") return "no_show";
   if (booking.status === "cancelled") return "cancelled";
   if (booking.status === "rejected") return "rejected";
+  if (booking.status === "approved" && booking.inUseAt) return "in_use";
 
   const start = atTime(booking.date, booking.startTime);
   const end = atTime(booking.date, booking.endTime);
@@ -44,7 +45,7 @@ export const PHASE_LABELS: Record<BookingPhase, string> = {
  * the grace period has passed without being closed out.
  */
 export function isNoShowEligible(booking: Booking, now: Date = new Date()): boolean {
-  if (booking.status !== "approved") return false;
+  if (booking.status !== "approved" || booking.inUseAt) return false;
 
   const start = atTime(booking.date, booking.startTime);
   if (!start) return false;

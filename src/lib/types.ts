@@ -72,6 +72,10 @@ export interface Booking {
   completedAt?: Timestamp | null;
   /** When an admin released the slot because nobody arrived. */
   noShowAt?: Timestamp | null;
+  /** When an admin confirmed that the student started using the facility. */
+  inUseAt?: Timestamp | null;
+  /** When an admin issued a no-show warning to this student. */
+  warningIssuedAt?: Timestamp | null;
 }
 
 /**
@@ -111,7 +115,7 @@ export interface AppNotification {
   uid: string;
   title: string;
   body: string;
-  kind: "approved" | "rejected" | "cancelled" | "system";
+  kind: "approved" | "rejected" | "cancelled" | "warning" | "system";
   bookingId: string | null;
   read: boolean;
   createdAt: Timestamp | null;

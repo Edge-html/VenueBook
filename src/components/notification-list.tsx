@@ -3,6 +3,7 @@
 import {
   Bell,
   BellOff,
+  AlertTriangle,
   CheckCheck,
   CheckCircle2,
   Info,
@@ -27,6 +28,7 @@ const KIND_STYLES: Record<AppNotification["kind"], { icon: typeof Bell; classNam
   approved: { icon: CheckCircle2, className: "bg-available-soft text-available" },
   rejected: { icon: XCircle, className: "bg-booked-soft text-booked" },
   cancelled: { icon: BellOff, className: "bg-ink-200 text-ink-600" },
+  warning: { icon: AlertTriangle, className: "bg-amber-100 text-amber-800" },
   system: { icon: Info, className: "bg-brand-50 text-brand-700" },
 };
 

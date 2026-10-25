@@ -680,13 +680,29 @@ export async function markBookingCompleted(
 }
 
 /** Admin releases a slot because the student never arrived. */
-export async function markBookingNoShow(bookingId: string, admin?: { uid: string; name: string }): Promise<void> {
+export async function markBookingNoShow(bookingId: string, admin?: { uid: string; name: string }, issueWarning = false): Promise<void> {
   await updateBookingState(bookingId, {
     status: "no_show" satisfies BookingStatus,
     noShowAt: serverTimestamp(),
     reviewedAt: serverTimestamp(),
+    ...(issueWarning ? { warningIssuedAt: serverTimestamp() } : {}),
     ...(admin ? { reviewedBy: admin.name, reviewedByUid: admin.uid } : {}),
-  }, { audit: admin ? { uid: admin.uid, name: admin.name, action: "no_show" } : undefined });
+  }, { audit: admin ? { uid: admin.uid, name: admin.name, action: issueWarning ? "no_show_warning" : "no_show" } : undefined });
+}
+
+/** Admin confirms that the approved facility booking has started. */
+export async function markBookingInUse(bookingId: string, admin: { uid: string; name: string }): Promise<void> {
+  const bookingSnap = await getDoc(doc(db, COLLECTIONS.bookings, bookingId));
+  if (!bookingSnap.exists()) throw new Error("This reservation no longer exists.");
+  const booking = parseBooking(bookingSnap.id, bookingSnap.data());
+  if (booking.status !== "approved" || booking.inUseAt) throw new Error("This reservation is no longer available to mark in use.");
+  await updateBookingState(bookingId, {
+    status: "approved",
+    inUseAt: serverTimestamp(),
+    reviewedAt: serverTimestamp(),
+    reviewedBy: admin.name,
+    reviewedByUid: admin.uid,
+  }, { audit: { uid: admin.uid, name: admin.name, action: "in_use" } });
 }
 
 export async function setBookingStatus(
@@ -1175,6 +1191,8 @@ function parseBooking(id: string, data: DocumentData): Booking {
     adminNote: (data.adminNote as string | null) ?? null,
     completedAt: (data.completedAt as Timestamp | null) ?? null,
     noShowAt: (data.noShowAt as Timestamp | null) ?? null,
+    inUseAt: (data.inUseAt as Timestamp | null) ?? null,
+    warningIssuedAt: (data.warningIssuedAt as Timestamp | null) ?? null,
   };
 }
 
