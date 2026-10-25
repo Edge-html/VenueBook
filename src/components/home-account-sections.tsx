@@ -115,13 +115,6 @@ function StudentSections() {
         <p className="eyebrow">My Booking</p>
         {nextBooking ? <><h2 className="mt-1 font-semibold text-ink-900">Scheduled Booking: {formatLongDate(nextBooking.date)}{nextBooking.date === todayKey() ? " · Today" : ""}</h2><p className="mt-1 text-sm text-ink-600">{facilities.find((facility) => facility.id === nextBooking.facilityId)?.name ?? FACILITY_BY_ID[nextBooking.facilityId]?.name} · {formatTimeRange(nextBooking.startTime, nextBooking.endTime)} · {nextBooking.status}</p><p className="mt-1 text-xs text-ink-500">{nextBooking.purpose} · {nextBooking.attendees} attendees</p></> : <p className="mt-1 text-sm text-ink-600">No upcoming booking. Open My Reservations to see your history.</p>}
       </Link>
-      {pending > 0 && (
-        <div className="banner banner-warning flex items-center gap-2 font-medium">
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          You have {pending} request{pending > 1 ? "s" : ""} waiting for review.
-        </div>
-      )}
-
       <section className="grid gap-3 sm:grid-cols-2">
         {ACTIONS.map(({ href, icon: Icon, title, description }) => (
           <Link

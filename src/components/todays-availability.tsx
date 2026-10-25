@@ -15,6 +15,7 @@ import {
 } from "@/lib/data";
 import { formatLongDate, todayKey } from "@/lib/dates";
 import { describeLoadError } from "@/lib/load-errors";
+import { describeMinutes } from "@/lib/time";
 import { useLiveQuery } from "@/lib/use-live-query";
 import { useIsMounted } from "@/lib/use-is-mounted";
 import { SlotChip } from "@/components/status-pill";
@@ -175,7 +176,7 @@ export function TodaysAvailability() {
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                   {TIME_BLOCKS.map((slot) =>
                     daySlots ? (
-                      <SlotChip key={slot.id} label={slot.label} state={daySlots[slot.id]} />
+                      <SlotChip key={slot.id} label={slot.label} state={daySlots[slot.id]} title={describeMinutes(slot.startMin, slot.endMin)} />
                     ) : (
                       <div
                         key={slot.id}
@@ -192,6 +193,7 @@ export function TodaysAvailability() {
           })
         )}
       </div>
+      <p className="mt-3 text-xs text-ink-500">Each chip labels the hour it starts. For example, 11 AM means 11 AM–12 PM; 12 PM means 12–1 PM.</p>
     </section>
   );
 }
