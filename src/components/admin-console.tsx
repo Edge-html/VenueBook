@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CalendarRange,
   Check,
+  Download,
   Dumbbell,
   Loader2,
   MonitorPlay,
@@ -20,15 +21,19 @@ import { useAuth } from "@/lib/auth-context";
 import { bookingPhase, isNoShowEligible } from "@/lib/booking-phase";
 import {
   allBookingsQuery,
+  bookingAuditQueries,
   blockSlot,
   blocksQueryForDate,
   cancelBooking,
   ensureAvailabilityProjections,
+  ensureIdPhotoFacilityAccess,
+  ensureSchoolCalendar,
   fetchIdPhoto,
   markBookingCompleted,
   markBookingNoShow,
   notifyUser,
   parseBlockedSlotDoc,
+  parseBookingAuditDoc,
   parseBookingDoc,
   removeBooking,
   reportBookingsQuery,
@@ -42,10 +47,12 @@ import { db, firebaseConfig } from "@/lib/firebase";
 import { formatTimeRange, describeMinutes } from "@/lib/time";
 import type { Booking, BookingStatus, FacilityId } from "@/lib/types";
 import { useLiveQuery } from "@/lib/use-live-query";
+import { SchoolCalendarManager } from "@/components/school-calendar-manager";
+import { downloadBookingsCsv } from "@/lib/exports";
 
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
-type Tab = "requests" | "schedule" | "reports";
+type Tab = "requests" | "schedule" | "reports" | "calendar" | "history";
 type StatusFilter = BookingStatus | "all" | "upcoming";
 
 /** Filter pills, in the order they appear. `all` is the default. */
@@ -170,6 +177,13 @@ export function AdminConsole() {
   const reportStart = reportPeriod === "daily" ? today : reportPeriod === "weekly" ? toDateKey(addDays(now, -((now.getDay() + 6) % 7))) : `${today.slice(0, 7)}-01`;
   const reportLive = useLiveQuery({ cacheKey: `report:${profile?.uid ?? "none"}:${reportStart}:${today}`, enabled: Boolean(profile), deps: [reportStart, today, profile?.assignedFacilityIds], buildQueries: () => [reportBookingsQuery(reportStart, today, profile?.assignedFacilityIds)] });
   const reportBookings = (reportLive.docs ?? []).map(parseBookingDoc);
+  const auditLive = useLiveQuery({
+    cacheKey: `booking-audit:${profile?.uid ?? "none"}:${(profile?.assignedFacilityIds ?? []).join(",")}`,
+    enabled: Boolean(profile),
+    deps: [profile?.uid, profile?.assignedFacilityIds],
+    buildQueries: () => bookingAuditQueries(profile?.assignedFacilityIds),
+  });
+  const auditEntries = useMemo(() => (auditLive.docs ?? []).map(parseBookingAuditDoc).sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0)), [auditLive.docs]);
   const todayCount = (bookings ?? []).filter(
     (b) => b.date === today && b.status === "approved",
   ).length;
@@ -179,17 +193,20 @@ export function AdminConsole() {
   useEffect(() => {
     if (bookingLive.loading || projectionSyncComplete) return;
     let active = true;
-    ensureAvailabilityProjections(bookings)
+    Promise.all([
+      ensureAvailabilityProjections(bookings),
+      ...(profile?.assignedFacilityIds?.length ? [] : [ensureIdPhotoFacilityAccess(bookings), ...(user ? [ensureSchoolCalendar(user.uid)] : [])]),
+    ])
       .then(() => {
         if (active) setProjectionSyncComplete(true);
       })
       .catch(() => {
-        if (active) setError("Could not prepare existing reservations for the shared calendar.");
+        if (active) setError("Could not prepare the school calendar or existing reservation data. Publish the latest Firestore rules and try again.");
       });
     return () => {
       active = false;
     };
-  }, [bookingLive.loading, bookings, projectionSyncComplete]);
+  }, [bookingLive.loading, bookings, projectionSyncComplete, profile?.assignedFacilityIds, user]);
 
   async function review(
     booking: Booking,
@@ -240,7 +257,7 @@ export function AdminConsole() {
 
     setBusyId(booking.id);
     try {
-      await removeBooking(booking);
+      await removeBooking(booking, user ? { uid: user.uid, name: adminName } : undefined);
       const notified = await notifyUser(
         booking.userId,
         "Booking removed",
@@ -259,7 +276,8 @@ export function AdminConsole() {
   async function handleCancelApproved(booking: Booking) {
     setBusyId(booking.id);
     try {
-      await cancelBooking(booking.id, true);
+      if (!user) throw new Error("Sign in again to continue.");
+      await cancelBooking(booking.id, { uid: user.uid, name: adminName });
       const notified = await notifyUser(
         booking.userId,
         "Booking cancelled by admin",
@@ -282,7 +300,8 @@ export function AdminConsole() {
 
     setBusyId(booking.id);
     try {
-      await markBookingNoShow(booking.id);
+      if (!user) throw new Error("Sign in again to continue.");
+      await markBookingNoShow(booking.id, { uid: user.uid, name: adminName });
       const notified = await notifyUser(
         booking.userId,
         "Marked as a no-show",
@@ -303,7 +322,8 @@ export function AdminConsole() {
   async function handleComplete(booking: Booking) {
     setBusyId(booking.id);
     try {
-      await markBookingCompleted(booking.id, true);
+      if (!user) throw new Error("Sign in again to continue.");
+      await markBookingCompleted(booking.id, true, { uid: user.uid, name: adminName });
       setToast("Booking closed out.");
     } catch {
       setError("Could not close out that booking.");
@@ -359,12 +379,14 @@ export function AdminConsole() {
       {error && <p className="banner banner-error mb-5">{error}</p>}
 
       {/* ── Tabs ────────────────────────────────────────────── */}
-      <div className="mb-6 inline-flex rounded-lg bg-ink-100 p-1">
+      <div className="mb-6 flex w-full flex-wrap gap-1 rounded-lg bg-ink-100 p-1 sm:w-fit">
         {(
           [
             { id: "requests" as const, label: "Booking requests" },
             { id: "schedule" as const, label: "Availability & schedule" },
             { id: "reports" as const, label: "Statistics & reports" },
+            { id: "calendar" as const, label: "School calendar" },
+            { id: "history" as const, label: "Admin history" },
           ]
         ).map((item) => (
           <button
@@ -443,11 +465,19 @@ export function AdminConsole() {
         </>
       ) : tab === "reports" ? (
         <section className="card p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="section-title">Booking report</h2><p className="text-sm text-ink-500">{formatShortDate(reportStart)} – {formatShortDate(today)}</p></div><select aria-label="Report period" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as "daily" | "weekly" | "monthly")} className="field w-auto"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="section-title">Booking report</h2><p className="text-sm text-ink-500">{formatShortDate(reportStart)} – {formatShortDate(today)}</p></div><div className="flex gap-2"><select aria-label="Report period" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as "daily" | "weekly" | "monthly")} className="field w-auto"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select><button type="button" onClick={() => downloadBookingsCsv(reportBookings, `venuebook-${reportPeriod}-${today}.csv`)} disabled={!reportBookings.length} className="btn btn-outline"><Download className="h-4 w-4" />Export CSV</button></div></div>
           {reportLive.error && <p className="banner banner-error mb-3">Could not load this report. Deploy the new Firestore index first.</p>}
           <div className="grid gap-3 sm:grid-cols-4">{(["all", "pending", "approved", "rejected"] as const).map((status) => <Stat key={status} label={status === "all" ? "Requests" : status} value={status === "all" ? reportBookings.length : reportBookings.filter((booking) => booking.status === status).length} tone="text-brand-700" />)}</div>
           <h3 className="mt-6 font-semibold text-ink-900">By venue</h3><div className="mt-2 space-y-2">{facilities.map((facility) => <p key={facility.id} className="flex justify-between border-b border-ink-200 py-2 text-sm"><span>{facility.name}</span><strong>{reportBookings.filter((booking) => booking.facilityId === facility.id).length}</strong></p>)}</div>
         </section>
+      ) : tab === "history" ? (
+        <section className="card p-5">
+          <div className="mb-4"><h2 className="section-title">Admin action history</h2><p className="mt-1 text-sm text-ink-500">The latest approval, rejection, cancellation, and booking close-out actions.</p></div>
+          {auditLive.error && <p className="banner banner-error mb-3">Could not load the audit history. Publish the latest Firestore rules and indexes.</p>}
+          {auditLive.loading && auditEntries.length === 0 ? <p className="text-sm text-ink-500">Loading history…</p> : auditEntries.length === 0 ? <p className="text-sm text-ink-500">No admin actions have been recorded yet.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead><tr className="border-b border-ink-200 text-xs uppercase text-ink-500"><th className="py-2 pr-3">When</th><th className="py-2 pr-3">Action</th><th className="py-2 pr-3">Booking</th><th className="py-2 pr-3">Student</th><th className="py-2">Admin</th></tr></thead><tbody>{auditEntries.map((entry) => <tr key={entry.id} className="border-b border-ink-100"><td className="py-3 pr-3">{entry.createdAt?.toDate().toLocaleString("en-PH") ?? "—"}</td><td className="py-3 pr-3 font-medium capitalize">{entry.action.replaceAll("_", " ")} · {entry.previousStatus} → {entry.status}</td><td className="py-3 pr-3">{formatShortDate(entry.date)} · {formatTimeRange(entry.startTime, entry.endTime)}</td><td className="py-3 pr-3">{entry.studentName}</td><td className="py-3">{entry.actorName}</td></tr>)}</tbody></table></div>}
+        </section>
+      ) : tab === "calendar" ? (
+        <SchoolCalendarManager />
       ) : (
         <section className="card p-6">
           <div className="mb-6 grid gap-4 sm:grid-cols-2">

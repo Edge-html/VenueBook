@@ -158,6 +158,7 @@ function SignUpFields() {
         <div>
           <label htmlFor="registrationId" className="field-label">School ID photo</label>
           <input id="registrationId" type="file" accept="image/jpeg,image/png,image/webp" required className="field" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} aria-invalid={Boolean(fieldErrors.idPhoto)} />
+          <p className="mt-2 text-xs text-ink-500">Only the main administrator and admins for venues you request can view this image.</p>
           <FieldError message={fieldErrors.idPhoto} />
         </div>
 

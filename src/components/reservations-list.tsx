@@ -18,6 +18,7 @@ import { formatLongDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
 import type { Booking } from "@/lib/types";
 import { useLiveQuery } from "@/lib/use-live-query";
+import { downloadBookingInvite } from "@/lib/exports";
 
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
@@ -237,6 +238,11 @@ function ReservationCard({
         </div>
 
         <div className="flex shrink-0 flex-col gap-2">
+          {booking.status === "approved" && (
+            <button type="button" onClick={() => downloadBookingInvite(booking, facility?.name ?? booking.facilityId)} className="btn btn-outline">
+              <CalendarPlus className="h-4 w-4" /> Add to calendar
+            </button>
+          )}
           {canComplete && (
             <button type="button" onClick={onComplete} disabled={cancelling} className="btn btn-primary">
               <CheckCircle2 className="h-4 w-4" />

@@ -29,6 +29,7 @@ import { earliestBookableMinutes } from "@/lib/booking-phase";
 import { formatClock, formatTimeRange, fromMinutes, parseClockInput } from "@/lib/time";
 import type { FacilityId } from "@/lib/types";
 import { useFacilities } from "@/lib/use-facilities";
+import { useSchoolCalendar } from "@/lib/use-school-calendar";
 
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
@@ -62,6 +63,7 @@ export function BookingForm() {
 
 function BookingFields({ defaultFullName, grade, section, idPhotoUrl }: { defaultFullName: string; grade: string; section: string; idPhotoUrl: string | null }) {
   const facilities = useFacilities();
+  const { calendar } = useSchoolCalendar();
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
@@ -72,7 +74,10 @@ function BookingFields({ defaultFullName, grade, section, idPhotoUrl }: { defaul
     initialFacility || "gymnasium",
   );
 
-  const maxDate = useMemo(() => toDateKey(addDays(new Date(), BOOKING_WINDOW_DAYS)), []);
+  const maxDate = useMemo(() => {
+    const rollingLimit = toDateKey(addDays(new Date(), BOOKING_WINDOW_DAYS));
+    return rollingLimit < calendar.endDate ? rollingLimit : calendar.endDate;
+  }, [calendar.endDate]);
 
   const [date, setDate] = useState(
     initialDate && initialDate >= todayKey() && initialDate <= maxDate ? initialDate : todayKey(),
@@ -103,7 +108,7 @@ function BookingFields({ defaultFullName, grade, section, idPhotoUrl }: { defaul
   // On today's date, anything that has already started is off limits.
   const earliest = earliestBookableMinutes(date);
   const minMinutes = earliest === null ? OPENING_MINUTES : Math.max(OPENING_MINUTES, earliest);
-  const dateIsUnbookable = earliest === null || Boolean(schoolDayReason(date));
+  const dateIsUnbookable = earliest === null || Boolean(schoolDayReason(date, calendar));
 
   const rangeValid =
     !dateIsUnbookable &&
@@ -166,7 +171,7 @@ function BookingFields({ defaultFullName, grade, section, idPhotoUrl }: { defaul
     if (!grade || !section || !idPhotoUrl) next.profile = "Complete your grade, section, and school ID in your profile before booking.";
     if (!date) next.date = "Choose a date.";
     else if (date < todayKey() || date > maxDate) next.date = `Choose a date within the next ${BOOKING_WINDOW_DAYS} days.`;
-    else if (schoolDayReason(date)) next.date = schoolDayReason(date)!;
+    else if (schoolDayReason(date, calendar)) next.date = schoolDayReason(date, calendar)!;
 
     if (startMin === null) next.startTime = "Type a start time, for example 1 PM.";
     if (endMin === null) next.endTime = "Type an end time, for example 4 PM.";
@@ -342,7 +347,7 @@ function BookingFields({ defaultFullName, grade, section, idPhotoUrl }: { defaul
             <select aria-label="Day" value={fromDateKey(date).getDate()} onChange={(event) => changeDate(`${date.slice(0, 8)}${event.target.value.padStart(2, "0")}`)} className="field w-auto">{Array.from({length:new Date(fromDateKey(date).getFullYear(),fromDateKey(date).getMonth()+1,0).getDate()},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select>
             <select aria-label="Year" value={fromDateKey(date).getFullYear()} onChange={(event) => changeDate(`${event.target.value}${date.slice(4)}`)} className="field w-auto">{[2026,2027].map((year)=><option key={year} value={year}>{year}</option>)}</select>
             <p className="text-xs text-ink-500">{formatLongDate(date)}</p>
-            {schoolDayReason(date) && <p className="text-xs font-medium text-booked">{schoolDayReason(date)}</p>}
+            {schoolDayReason(date, calendar) && <p className="text-xs font-medium text-booked">{schoolDayReason(date, calendar)}</p>}
           </div>
 
           {/* Free-form start and end, to the minute. */}

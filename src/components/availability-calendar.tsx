@@ -29,6 +29,7 @@ import type { FacilityId, SlotState } from "@/lib/types";
 import { describeLoadError } from "@/lib/load-errors";
 import { describeMinutes } from "@/lib/time";
 import { useLiveQuery } from "@/lib/use-live-query";
+import { useSchoolCalendar } from "@/lib/use-school-calendar";
 
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
@@ -42,6 +43,7 @@ const SEGMENT_STYLES: Record<SlotState, string> = {
 
 export function AvailabilityCalendar() {
   const facilities = useFacilities();
+  const { calendar } = useSchoolCalendar();
   const searchParams = useSearchParams();
   const initialFacility = searchParams.get("facility");
   const initialDate = searchParams.get("date");
@@ -61,7 +63,7 @@ export function AvailabilityCalendar() {
   const [selected, setSelected] = useState<string>(initialDate ?? todayKey());
 
   const today = todayKey();
-  const maxDate = toDateKey(addDays(new Date(), BOOKING_WINDOW_DAYS));
+  const maxDate = [toDateKey(addDays(new Date(), BOOKING_WINDOW_DAYS)), calendar.endDate].sort()[0];
 
   const grid = useMemo(() => monthGrid(month), [month]);
 
@@ -201,7 +203,7 @@ export function AvailabilityCalendar() {
             {grid.map((day) => {
               const key = toDateKey(day);
               const inMonth = day.getMonth() === currentMonth;
-              const bookable = key >= today && key <= maxDate && !schoolDayReason(key);
+              const bookable = key >= today && key <= maxDate && !schoolDayReason(key, calendar);
               const slots = data?.[key];
               const isSelected = key === selected;
 
@@ -212,8 +214,8 @@ export function AvailabilityCalendar() {
                   disabled={!bookable}
                   onClick={() => setSelected(key)}
                   aria-pressed={isSelected}
-                  aria-label={`${formatLongDate(key)}${schoolDayReason(key) ? `: ${schoolDayReason(key)}` : ""}`}
-                  title={schoolDayReason(key) ?? undefined}
+                  aria-label={`${formatLongDate(key)}${schoolDayReason(key, calendar) ? `: ${schoolDayReason(key, calendar)}` : ""}`}
+                  title={schoolDayReason(key, calendar) ?? undefined}
                   className={`flex flex-col items-center gap-1.5 rounded-md px-1 py-2 transition-colors ${
                     isSelected
                       ? "bg-brand-700 text-white"
@@ -254,7 +256,7 @@ export function AvailabilityCalendar() {
                             <span key={i} className="h-full flex-1 bg-ink-200" />
                           ))}
                   </span>
-                  {schoolDayReason(key) && inMonth && <span className="text-[9px] leading-none">Closed</span>}
+                  {schoolDayReason(key, calendar) && inMonth && <span className="text-[9px] leading-none">Closed</span>}
                 </button>
               );
             })}
@@ -276,7 +278,7 @@ export function AvailabilityCalendar() {
                 {facility.name}
               </h2>
               <p className="text-xs text-ink-500">{formatLongDate(selected)}</p>
-              {schoolDayReason(selected) && <p className="text-xs font-medium text-booked">{schoolDayReason(selected)}</p>}
+              {schoolDayReason(selected, calendar) && <p className="text-xs font-medium text-booked">{schoolDayReason(selected, calendar)}</p>}
             </div>
           </div>
 
@@ -329,8 +331,8 @@ export function AvailabilityCalendar() {
 
           <Link
             href={`/book?facility=${facilityId}&date=${selected}`}
-            aria-disabled={Boolean(schoolDayReason(selected))}
-            className={`btn btn-primary mt-6 w-full ${schoolDayReason(selected) ? "pointer-events-none opacity-50" : ""}`}
+            aria-disabled={Boolean(schoolDayReason(selected, calendar))}
+            className={`btn btn-primary mt-6 w-full ${schoolDayReason(selected, calendar) ? "pointer-events-none opacity-50" : ""}`}
           >
             Book this facility
           </Link>

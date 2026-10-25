@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   allBookingsQuery,
+  bookingRequestAlertQueries,
   markAllNotificationsRead,
   notificationsQueryForUser,
   parseNotificationDoc,
@@ -49,6 +50,7 @@ function relativeTime(createdAt: AppNotification["createdAt"]): string {
 export function NotificationList() {
   const { user, profile, isAdmin } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [browserAlertMessage, setBrowserAlertMessage] = useState<string | null>(null);
 
   // Live: the notification arrives the moment an admin approves or declines.
   const live = useLiveQuery({
@@ -61,6 +63,9 @@ export function NotificationList() {
   const items = useMemo(() => (live.docs ?? []).map(parseNotificationDoc), [live.docs]);
   const requestsLive = useLiveQuery({ cacheKey: `notification-admin-requests:${user?.uid ?? "none"}`, enabled: Boolean(user && isAdmin), deps: [user?.uid, isAdmin, profile?.assignedFacilityIds], buildQueries: () => user && isAdmin ? [allBookingsQuery(profile?.assignedFacilityIds)] : [] });
   const pendingRequests = (requestsLive.docs ?? []).filter((entry) => entry.data().status === "pending").length;
+  const pendingBookingIds = new Set((requestsLive.docs ?? []).filter((entry) => entry.data().status === "pending").map((entry) => entry.id));
+  const requestAlertsLive = useLiveQuery({ cacheKey: `request-alerts:${user?.uid ?? "none"}:${(profile?.assignedFacilityIds ?? []).join(",")}`, enabled: Boolean(user && isAdmin), deps: [user?.uid, isAdmin, profile?.assignedFacilityIds], buildQueries: () => bookingRequestAlertQueries(profile?.assignedFacilityIds) });
+  const recentRequests = (requestAlertsLive.docs ?? []).filter((entry) => pendingBookingIds.has(String(entry.data().bookingId))).slice(0, 10);
   const loading = live.loading;
 
   async function markAllRead() {
@@ -74,6 +79,25 @@ export function NotificationList() {
       // Leave the list as-is; the user can retry.
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function enableBrowserAlerts() {
+    if (!("Notification" in window)) {
+      setBrowserAlertMessage("This browser does not support desktop notifications.");
+      return;
+    }
+    const permission = Notification.permission === "default"
+      ? await Notification.requestPermission()
+      : Notification.permission;
+    if (permission === "granted") {
+      try { window.localStorage.setItem("venuebook.browserAlerts", "enabled"); } catch {
+        setBrowserAlertMessage("Allow site storage in your browser to keep browser alerts enabled.");
+        return;
+      }
+      setBrowserAlertMessage("Browser alerts are enabled on this device while VenueBook is open.");
+    } else {
+      setBrowserAlertMessage("Browser alerts are blocked. Allow notifications for this site in your browser settings.");
     }
   }
 
@@ -92,15 +116,24 @@ export function NotificationList() {
           <p className="page-lede">{isAdmin ? "New requests and booking updates." : "Approval updates from the VenueBook admins."}</p>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void enableBrowserAlerts()} className="btn btn-outline">
+            <Bell className="h-4 w-4" /> Enable browser alerts
+          </button>
         {unread > 0 && (
           <button type="button" onClick={markAllRead} disabled={busy} className="btn btn-outline">
             <CheckCheck className="h-4 w-4" />
             {busy ? "Marking…" : "Mark all read"}
           </button>
         )}
+        </div>
       </header>
 
+      {browserAlertMessage && <p role="status" className="banner banner-notice mb-4">{browserAlertMessage}</p>}
+
       {isAdmin && pendingRequests > 0 && <Link href="/admin" className="banner banner-warning mb-4 block font-medium">{pendingRequests} booking request{pendingRequests === 1 ? "" : "s"} awaiting review. Open Booking Requests →</Link>}
+      {isAdmin && requestAlertsLive.error && <p role="alert" className="banner banner-error mb-4">Could not load booking request alerts. The latest Firestore rules and indexes may still be deploying.</p>}
+      {isAdmin && recentRequests.length > 0 && <section className="card mb-5 p-4"><h2 className="font-semibold text-ink-900">Recent booking requests</h2><ul className="mt-2 divide-y divide-ink-100">{recentRequests.map((entry) => <li key={entry.id} className="flex flex-wrap items-center gap-3 py-2 text-sm"><span className="min-w-0 flex-1">{String(entry.data().facilityId ?? "Venue")} · {String(entry.data().date ?? "Date pending")}</span><Link href="/admin" className="link">Review</Link></li>)}</ul></section>}
 
       {loading && items.length === 0 ? (
         <div className="space-y-4">

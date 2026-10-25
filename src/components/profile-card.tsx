@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/firebase";
 import { formatPhone, isValidMobilePhone, normalizePhone } from "@/lib/phone";
 import { GRADES, SECTION_MAX_LENGTH } from "@/lib/constants";
-import { uploadIdPhoto, validateIdPhoto } from "@/lib/data";
+import { removeStudentIdPhoto, uploadIdPhoto, validateIdPhoto } from "@/lib/data";
 import type { UserProfile } from "@/lib/types";
 
 export function ProfileCard() {
@@ -76,6 +76,24 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
   async function handleSignOut() {
     await signOut();
     router.replace("/");
+  }
+
+  async function removeSchoolId() {
+    if (!user || !profile.idPhotoUrl) return;
+    if (!window.confirm("Remove your saved School ID photo? Admins will no longer be able to view it on past requests, and you must upload it again before booking.")) return;
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await removeStudentIdPhoto(user.uid, profile.idPhotoUrl);
+      await refreshProfile();
+      setIdPhoto(null);
+      setMessage("School ID photo removed. Upload a new one before your next booking.");
+    } catch {
+      setError("Could not remove the School ID photo. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -158,7 +176,7 @@ function ProfileForm({ profile }: { profile: UserProfile }) {
           {!isAdmin && <div className="grid gap-3 sm:grid-cols-2">
             <div><label htmlFor="profileGrade" className="field-label">Grade</label><select id="profileGrade" value={grade} onChange={(event) => setGrade(event.target.value)} className="field"><option value="">Select grade</option>{GRADES.map((value) => <option key={value} value={value}>Grade {value}</option>)}</select></div>
             <div><label htmlFor="profileSection" className="field-label">Section</label><input id="profileSection" value={section} maxLength={SECTION_MAX_LENGTH} onChange={(event) => setSection(event.target.value)} className="field" /></div>
-            <div className="sm:col-span-2"><label htmlFor="profileId" className="field-label">School ID photo {profile.idPhotoUrl ? "(on file)" : "(required)"}</label><input id="profileId" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} className="field" /></div>
+            <div className="sm:col-span-2"><label htmlFor="profileId" className="field-label">School ID photo {profile.idPhotoUrl ? "(on file)" : "(required)"}</label><input id="profileId" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} className="field" />{profile.idPhotoUrl && <button type="button" onClick={() => void removeSchoolId()} disabled={saving} className="link mt-2 text-xs text-booked">Remove saved School ID photo</button>}</div>
           </div>}
           <div className="flex flex-wrap gap-2 border-t border-ink-200 pt-5">
             <button type="submit" disabled={saving} className="btn btn-primary">

@@ -44,11 +44,22 @@ as **Pending** and wait for an admin.
   school event, etc.) and reopen them. Closed slots disappear from the booking
   form.
 - Stats for pending requests and today's approvals.
-- Daily, weekly, and monthly booking reports; new venues; venue-specific admin accounts.
+- Daily, weekly, and monthly booking reports with CSV export; admin action history; new venues; venue-specific admin accounts.
+- School calendar editor for the active school year, holidays, and one-off closures.
 
 ### Email verification
 
 Firebase Authentication sends the verification link directly, so registration does not need Resend, a custom sending domain, a Firebase service-account key, or OTP secrets. In Firebase Console, enable **Email/Password** under Authentication → Sign-in method and add the deployed Vercel hostname (for example, `knchs-venuebook.vercel.app`) under Authentication → Settings → Authorized domains. The app returns students to `/verify-email` after Firebase verifies the link. Deploy the updated `firestore.rules` so bookings require Firebase's verified-email claim; accounts already verified with the previous code flow remain eligible.
+
+### Firestore deployment
+
+GitHub Actions deploys Firestore rules and indexes when those files change on `main`. Add a repository secret named `FIREBASE_SERVICE_ACCOUNT_JSON` in GitHub → Settings → Secrets and variables → Actions. Its value must be the complete service-account JSON for a service account with permission to deploy Firestore rules and indexes. Check the **Actions** tab after a Firestore change; a green **Deploy Firestore configuration** run means the live database matches this repository.
+
+The main administrator can edit the current school year, holidays, and school closure dates in Admin Console → School calendar. The same live calendar is used by the student booking form and enforced by Firestore rules.
+
+Approved reservations can be downloaded as calendar events from My Reservations. Students can enable browser alerts from Notifications; those desktop alerts are delivered while VenueBook is open. In-app notifications remain available in the app.
+
+School ID images are visible to the student, the main administrator, and venue admins for facilities the student has requested. Students can remove their saved ID image from My Profile; doing so also removes it from prior booking records and requires uploading it again before booking. The school should set its retention period in its privacy policy.
 
 ---
 

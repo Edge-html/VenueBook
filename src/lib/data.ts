@@ -1,7 +1,7 @@
 import {
   addDoc,
+  arrayUnion,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { MAX_ID_PHOTO_BYTES, TIME_BLOCKS, BLOCK_BY_ID } from "./constants";
-import { bookingInstants, schoolDayReason } from "./dates";
+import { bookingInstants, DEFAULT_SCHOOL_CALENDAR, schoolDayReason, type SchoolCalendarSettings } from "./dates";
 import { formatTimeRange, fromMinutes, overlaps, toMinutes } from "./time";
 import type {
   AppNotification,
@@ -41,7 +41,44 @@ export const COLLECTIONS = {
   blockedSlots: "blockedSlots",
   notifications: "notifications",
   idPhotos: "idPhotos",
+  schoolCalendar: "schoolCalendar",
+  bookingAudit: "bookingAudit",
+  requestAlerts: "requestAlerts",
 } as const;
+
+export async function getSchoolCalendar(): Promise<SchoolCalendarSettings> {
+  const snapshot = await getDoc(doc(db, COLLECTIONS.schoolCalendar, "current"));
+  if (!snapshot.exists()) return DEFAULT_SCHOOL_CALENDAR;
+  const data = snapshot.data();
+  return {
+    schoolYearLabel: String(data.schoolYearLabel ?? DEFAULT_SCHOOL_CALENDAR.schoolYearLabel),
+    startDate: String(data.startDate ?? DEFAULT_SCHOOL_CALENDAR.startDate),
+    endDate: String(data.endDate ?? DEFAULT_SCHOOL_CALENDAR.endDate),
+    closedDates: Array.isArray(data.closedDates) ? data.closedDates.filter((date): date is string => typeof date === "string") : [],
+    closedReasons: data.closedReasons && typeof data.closedReasons === "object" ? data.closedReasons as Record<string, string> : {},
+  };
+}
+
+export async function ensureSchoolCalendar(adminUid: string): Promise<void> {
+  const calendarRef = doc(db, COLLECTIONS.schoolCalendar, "current");
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(calendarRef);
+    if (current.exists()) return;
+    transaction.set(calendarRef, {
+      ...DEFAULT_SCHOOL_CALENDAR,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminUid,
+    });
+  });
+}
+
+export async function saveSchoolCalendar(settings: SchoolCalendarSettings, adminUid: string): Promise<void> {
+  await setDoc(doc(db, COLLECTIONS.schoolCalendar, "current"), {
+    ...settings,
+    updatedAt: serverTimestamp(),
+    updatedBy: adminUid,
+  });
+}
 
 /** Deterministic key so a slot can only be blocked once. */
 export function blockedSlotId(facilityId: string, date: string, timeSlot: string) {
@@ -79,6 +116,7 @@ export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
 
   await setDoc(doc(db, COLLECTIONS.idPhotos, id), {
     ownerId: uid,
+    facilityIds: [],
     contentType: file.type,
     size: bytes.length,
     data: bytes,
@@ -105,13 +143,19 @@ export async function fetchIdPhoto(
   return { url, revoke: () => URL.revokeObjectURL(url) };
 }
 
-export async function removeUploadedIdPhoto(id: string | null): Promise<void> {
-  if (!id) return;
-  try {
-    await deleteDoc(doc(db, COLLECTIONS.idPhotos, id));
-  } catch {
-    // The photo may already be gone; nothing useful to do about it.
-  }
+export async function removeStudentIdPhoto(uid: string, id: string): Promise<void> {
+  const profileRef = doc(db, COLLECTIONS.users, uid);
+  const photoRef = doc(db, COLLECTIONS.idPhotos, id);
+  await runTransaction(db, async (transaction) => {
+    const [profileSnap, photoSnap] = await Promise.all([
+      transaction.get(profileRef),
+      transaction.get(photoRef),
+    ]);
+    if (!profileSnap.exists()) throw new Error("Account profile not found.");
+    if (photoSnap.exists() && photoSnap.data().ownerId !== uid) throw new Error("This image does not belong to your account.");
+    transaction.update(profileRef, { idPhotoUrl: null });
+    if (photoSnap.exists()) transaction.delete(photoRef);
+  });
 }
 
 /* ── Availability ──────────────────────────────────────────────────────── */
@@ -345,6 +389,57 @@ export function reportBookingsQuery(start: string, end: string, assignedFacility
     : query(base, where("date", ">=", start), where("date", "<=", end));
 }
 
+export interface BookingAuditEntry {
+  id: string;
+  bookingId: string;
+  facilityId: FacilityId;
+  date: string;
+  startTime: string;
+  endTime: string;
+  studentName: string;
+  action: string;
+  actorUid: string;
+  actorName: string;
+  previousStatus: string;
+  status: string;
+  createdAt: Timestamp | null;
+}
+
+export function bookingAuditQueries(assignedFacilityIds?: FacilityId[]): Query<DocumentData>[] {
+  const audit = collection(db, COLLECTIONS.bookingAudit);
+  if (!assignedFacilityIds?.length) return [query(audit, orderBy("createdAt", "desc"), limit(100))];
+  return assignedFacilityIds.slice(0, 30).map((facilityId) =>
+    query(audit, where("facilityId", "==", facilityId), orderBy("createdAt", "desc"), limit(100)),
+  );
+}
+
+export function bookingRequestAlertQueries(assignedFacilityIds?: FacilityId[]): Query<DocumentData>[] {
+  const alerts = collection(db, COLLECTIONS.requestAlerts);
+  if (!assignedFacilityIds?.length) return [query(alerts, orderBy("createdAt", "desc"), limit(50))];
+  return assignedFacilityIds.slice(0, 30).map((facilityId) =>
+    query(alerts, where("facilityId", "==", facilityId), orderBy("createdAt", "desc"), limit(50)),
+  );
+}
+
+export function parseBookingAuditDoc(snap: QueryDocumentSnapshot<DocumentData>): BookingAuditEntry {
+  const data = snap.data();
+  return {
+    id: snap.id,
+    bookingId: String(data.bookingId ?? ""),
+    facilityId: String(data.facilityId ?? ""),
+    date: String(data.date ?? ""),
+    startTime: String(data.startTime ?? ""),
+    endTime: String(data.endTime ?? ""),
+    studentName: String(data.studentName ?? ""),
+    action: String(data.action ?? "updated"),
+    actorUid: String(data.actorUid ?? ""),
+    actorName: String(data.actorName ?? "Admin"),
+    previousStatus: String(data.previousStatus ?? ""),
+    status: String(data.status ?? ""),
+    createdAt: (data.createdAt as Timestamp | null) ?? null,
+  };
+}
+
 export function notificationsQueryForUser(uid: string): Query<DocumentData> {
   return query(
     collection(db, COLLECTIONS.notifications),
@@ -406,8 +501,13 @@ class ScheduleChangedError extends Error {
 
 export async function createBooking(input: NewBookingInput): Promise<string> {
   const { startTime, endTime, date, ...rest } = input;
-  const closedReason = schoolDayReason(date);
+  const calendar = await getSchoolCalendar();
+  const closedReason = schoolDayReason(date, calendar);
   if (closedReason) throw new Error(closedReason);
+  if (!input.idPhotoUrl) throw new Error("Upload your school ID photo before booking.");
+  await updateDoc(doc(db, COLLECTIONS.idPhotos, input.idPhotoUrl), {
+    facilityIds: arrayUnion(input.facilityId),
+  });
 
   // Absolute instants alongside the wall-clock strings: the security rules can
   // compare these against `request.time`, which rules out a past booking even
@@ -416,6 +516,7 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
 
   const bookingRef = doc(collection(db, COLLECTIONS.bookings));
   const availabilityRef = doc(db, COLLECTIONS.availability, bookingRef.id);
+  const alertRef = doc(db, COLLECTIONS.requestAlerts, bookingRef.id);
   const dayRef = doc(db, COLLECTIONS.scheduleDays, `${input.facilityId}__${date}`);
   const bookingData = {
     ...rest,
@@ -491,6 +592,14 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
           updatedAt: serverTimestamp(),
         });
         transaction.set(bookingRef, bookingData);
+        transaction.set(alertRef, {
+          bookingId: bookingRef.id,
+          facilityId: input.facilityId,
+          date,
+          userId: input.userId,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
         transaction.set(availabilityRef, {
           facilityId: input.facilityId,
           date,
@@ -513,21 +622,23 @@ export async function createBooking(input: NewBookingInput): Promise<string> {
 export async function markBookingCompleted(
   bookingId: string,
   byAdmin = false,
+  admin?: { uid: string; name: string },
 ): Promise<void> {
   await updateBookingState(bookingId, {
     status: "completed" satisfies BookingStatus,
     completedAt: serverTimestamp(),
-    ...(byAdmin ? { reviewedAt: serverTimestamp() } : {}),
-  });
+    ...(byAdmin ? { reviewedAt: serverTimestamp(), reviewedBy: admin?.name ?? "Admin", reviewedByUid: admin?.uid ?? "" } : {}),
+  }, { audit: byAdmin && admin ? { uid: admin.uid, name: admin.name, action: "completed" } : undefined });
 }
 
 /** Admin releases a slot because the student never arrived. */
-export async function markBookingNoShow(bookingId: string): Promise<void> {
+export async function markBookingNoShow(bookingId: string, admin?: { uid: string; name: string }): Promise<void> {
   await updateBookingState(bookingId, {
     status: "no_show" satisfies BookingStatus,
     noShowAt: serverTimestamp(),
     reviewedAt: serverTimestamp(),
-  });
+    ...(admin ? { reviewedBy: admin.name, reviewedByUid: admin.uid } : {}),
+  }, { audit: admin ? { uid: admin.uid, name: admin.name, action: "no_show" } : undefined });
 }
 
 export async function setBookingStatus(
@@ -540,26 +651,33 @@ export async function setBookingStatus(
     status,
     reviewedAt: serverTimestamp(),
     reviewedBy: admin.name,
+    reviewedByUid: admin.uid,
     adminNote: note.trim() || null,
-  }, status === "approved");
+  }, { checkSchedule: status === "approved", audit: { uid: admin.uid, name: admin.name, action: status } });
 }
 
-export async function cancelBooking(bookingId: string, byAdmin = false): Promise<void> {
+export async function cancelBooking(bookingId: string, admin?: { uid: string; name: string }): Promise<void> {
   // A student's cancellation may only touch `status` — the security rules
   // reject any other changed field, so `reviewedAt` is written by admins only.
-  await updateBookingState(bookingId, byAdmin
-    ? { status: "cancelled" satisfies BookingStatus, reviewedAt: serverTimestamp() }
-    : { status: "cancelled" satisfies BookingStatus });
+  await updateBookingState(bookingId, admin
+    ? { status: "cancelled" satisfies BookingStatus, reviewedAt: serverTimestamp(), reviewedBy: admin.name, reviewedByUid: admin.uid }
+    : { status: "cancelled" satisfies BookingStatus }, {
+      audit: admin ? { uid: admin.uid, name: admin.name, action: "cancelled" } : undefined,
+    });
 }
+
+interface AdminAuditActor { uid: string; name: string; action: string; }
 
 /** Keeps the private booking and its public schedule projection in one write. */
 async function updateBookingState(
   bookingId: string,
   changes: Record<string, unknown> & { status: BookingStatus },
-  checkSchedule = false,
+  options: { checkSchedule?: boolean; audit?: AdminAuditActor } = {},
 ): Promise<void> {
+  const checkSchedule = options.checkSchedule ?? false;
   const bookingRef = doc(db, COLLECTIONS.bookings, bookingId);
   const availabilityRef = doc(db, COLLECTIONS.availability, bookingId);
+  const auditRef = options.audit ? doc(collection(db, COLLECTIONS.bookingAudit)) : null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const bookingBefore = await getDoc(bookingRef);
     if (!bookingBefore.exists()) throw new Error("This reservation no longer exists.");
@@ -610,6 +728,22 @@ async function updateBookingState(
         if (checkSchedule && revision !== queriedRevision) throw new ScheduleChangedError();
 
         transaction.update(bookingRef, changes);
+        if (auditRef && options.audit) {
+          transaction.set(auditRef, {
+            bookingId,
+            facilityId: booking.facilityId,
+            date: booking.date,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            studentName: booking.fullName,
+            action: options.audit.action,
+            actorUid: options.audit.uid,
+            actorName: options.audit.name,
+            previousStatus: booking.status,
+            status: changes.status,
+            createdAt: serverTimestamp(),
+          });
+        }
         transaction.set(availabilityRef, {
           facilityId: booking.facilityId,
           date: booking.date,
@@ -672,6 +806,22 @@ export async function ensureAvailabilityProjections(bookings: Booking[]): Promis
         updatedAt: serverTimestamp(),
       });
     });
+  }));
+}
+
+/** Backfills venue-scoped School ID access for records created before that privacy rule. */
+export async function ensureIdPhotoFacilityAccess(bookings: Booking[]): Promise<void> {
+  const facilitiesByPhoto = new Map<string, Set<string>>();
+  for (const booking of bookings) {
+    if (!booking.idPhotoUrl) continue;
+    const facilities = facilitiesByPhoto.get(booking.idPhotoUrl) ?? new Set<string>();
+    facilities.add(booking.facilityId);
+    facilitiesByPhoto.set(booking.idPhotoUrl, facilities);
+  }
+  await Promise.all([...facilitiesByPhoto.entries()].map(async ([photoId, facilityIds]) => {
+    const photoRef = doc(db, COLLECTIONS.idPhotos, photoId);
+    if (!(await getDoc(photoRef)).exists()) return;
+    await updateDoc(photoRef, { facilityIds: arrayUnion(...facilityIds) });
   }));
 }
 
@@ -803,14 +953,16 @@ export async function getBlocks(facilityId: FacilityId, date: string): Promise<B
  * Drops a booking and frees the slot, but only if no other active booking
  * remains on it. Prevents an approved clash from being wiped out wholesale.
  */
-export async function removeBooking(booking: Booking): Promise<void> {
+export async function removeBooking(booking: Booking, admin?: { uid: string; name: string }): Promise<void> {
   if (await isRangeStillHeld(booking.facilityId, booking.date, booking.startTime, booking.endTime, booking.id)) {
-    await cancelBooking(booking.id, true);
+    if (!admin) throw new Error("An administrator identity is required to remove this request.");
+    await cancelBooking(booking.id, admin);
     return;
   }
   const bookingRef = doc(db, COLLECTIONS.bookings, booking.id);
   const availabilityRef = doc(db, COLLECTIONS.availability, booking.id);
   const dayRef = doc(db, COLLECTIONS.scheduleDays, `${booking.facilityId}__${booking.date}`);
+  const auditRef = admin ? doc(collection(db, COLLECTIONS.bookingAudit)) : null;
   await runTransaction(db, async (transaction) => {
     const [bookingSnap, daySnap] = await Promise.all([
       transaction.get(bookingRef),
@@ -820,6 +972,22 @@ export async function removeBooking(booking: Booking): Promise<void> {
     const revision = daySnap.exists() ? Number(daySnap.data().revision ?? 0) : 0;
     transaction.delete(bookingRef);
     transaction.delete(availabilityRef);
+    if (auditRef && admin) {
+      transaction.set(auditRef, {
+        bookingId: booking.id,
+        facilityId: booking.facilityId,
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        studentName: booking.fullName,
+        action: "deleted",
+        actorUid: admin.uid,
+        actorName: admin.name,
+        previousStatus: booking.status,
+        status: "deleted",
+        createdAt: serverTimestamp(),
+      });
+    }
     transaction.set(dayRef, {
       facilityId: booking.facilityId,
       date: booking.date,

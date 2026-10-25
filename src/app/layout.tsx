@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { Analytics } from "@/components/analytics";
+import { BrowserNotificationBridge } from "@/components/browser-notification-bridge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
@@ -44,6 +45,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-ink-100 font-sans text-ink-800 antialiased">
         <AuthProvider>
           <Analytics />
+          <BrowserNotificationBridge />
           <div className="flex min-h-screen flex-col">
             <SiteHeader />
             <main className="flex-1">{children}</main>

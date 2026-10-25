@@ -90,8 +90,27 @@ export function isPastDay(key: string): boolean {
   return key < todayKey();
 }
 
-/** DepEd Order 009, s. 2026: SY 2026–2027 runs June 8 to April 8. */
-const SCHOOL_HOLIDAYS: Record<string, string> = {
+export interface SchoolCalendarSettings {
+  schoolYearLabel: string;
+  startDate: string;
+  endDate: string;
+  closedDates: string[];
+  closedReasons: Record<string, string>;
+}
+
+/** Default for a fresh install; admins can edit this in the live app. */
+export const DEFAULT_SCHOOL_CALENDAR: SchoolCalendarSettings = {
+  schoolYearLabel: "School Year 2026–2027",
+  startDate: "2026-06-08",
+  endDate: "2027-04-08",
+  closedDates: [
+    "2026-06-12", "2026-08-21", "2026-08-31", "2026-11-02", "2026-11-30",
+    "2026-12-08", "2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22",
+    "2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27",
+    "2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01",
+    "2027-01-02", "2027-01-03", "2027-03-25", "2027-03-26",
+  ],
+  closedReasons: {
   "2026-06-12": "Independence Day",
   "2026-08-21": "Ninoy Aquino Day",
   "2026-08-31": "National Heroes Day",
@@ -105,12 +124,15 @@ const SCHOOL_HOLIDAYS: Record<string, string> = {
   "2027-01-01": "New Year's Day",
   "2027-03-25": "Maundy Thursday",
   "2027-03-26": "Good Friday",
+  },
 };
 
-export function schoolDayReason(key: string): string | null {
-  if (key < "2026-06-08" || key > "2027-04-08") return "Outside the current DepEd school year";
-  if (key >= "2026-12-19" && key <= "2027-01-03") return "DepEd year-end break";
-  if (SCHOOL_HOLIDAYS[key]) return `Holiday: ${SCHOOL_HOLIDAYS[key]}`;
+export function schoolDayReason(
+  key: string,
+  calendar: SchoolCalendarSettings = DEFAULT_SCHOOL_CALENDAR,
+): string | null {
+  if (key < calendar.startDate || key > calendar.endDate) return `Outside ${calendar.schoolYearLabel}`;
+  if (calendar.closedDates.includes(key)) return calendar.closedReasons[key] || "Closed by school calendar";
   const day = fromDateKey(key).getDay();
   if (day === 0 || day === 6) return "Weekend — bookings are for weekdays only";
   return null;

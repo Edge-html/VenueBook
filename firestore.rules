@@ -39,8 +39,21 @@ service cloud.firestore {
       return getAfter(/databases/$(database)/documents/availability/$(bookingId));
     }
 
+    function requestAlertAfter(bookingId) {
+      return getAfter(/databases/$(database)/documents/requestAlerts/$(bookingId));
+    }
+
     function scheduleDayAfter(facilityId, date) {
       return getAfter(/databases/$(database)/documents/scheduleDays/$(facilityId + '__' + date));
+    }
+
+    function schoolCalendarAllows(date) {
+      let calendarPath = /databases/$(database)/documents/schoolCalendar/current;
+      return date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && exists(calendarPath)
+        && date >= get(calendarPath).data.startDate
+        && date <= get(calendarPath).data.endDate
+        && !(date in get(calendarPath).data.closedDates);
     }
 
     match /users/{uid} {
@@ -72,6 +85,25 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /schoolCalendar/{calendarId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSuperAdmin()
+        && calendarId == 'current'
+        && request.resource.data.schoolYearLabel is string
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string
+        && request.resource.data.startDate <= request.resource.data.endDate
+        && request.resource.data.closedDates is list
+        && request.resource.data.closedDates.size() <= 366
+        && request.resource.data.closedReasons is map
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'schoolYearLabel', 'startDate', 'endDate', 'closedDates',
+          'closedReasons', 'updatedAt', 'updatedBy'
+        ]);
+      allow delete: if false;
+    }
+
     // Reservation details are private. Students can only read their own records.
     match /bookings/{bookingId} {
       allow read: if isFacilityAdmin(resource.data.facilityId) || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -91,18 +123,14 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending'
                     && request.resource.data.startAt is timestamp
                     && request.resource.data.startAt > request.time
+                    && request.resource.data.startAt <= request.time + duration.value(60, 'd')
                     && (request.resource.data.startAt + duration.value(8, 'h')).dayOfWeek() <= 5
-                    && request.resource.data.date >= '2026-06-08'
-                    && request.resource.data.date <= '2027-04-08'
-                    && !(request.resource.data.date >= '2026-12-19'
-                         && request.resource.data.date <= '2027-01-03')
-                    && !(request.resource.data.date in [
-                      '2026-06-12', '2026-08-21', '2026-08-31', '2026-11-02',
-                      '2026-11-30', '2026-12-08', '2026-12-24',
-                      '2026-12-25', '2026-12-30', '2026-12-31', '2027-01-01',
-                      '2027-03-25', '2027-03-26'
-                    ])
+                    && schoolCalendarAllows(request.resource.data.date)
                     && existsAfter(/databases/$(database)/documents/availability/$(bookingId))
+                    && existsAfter(/databases/$(database)/documents/requestAlerts/$(bookingId))
+                    && requestAlertAfter(bookingId).data.userId == request.auth.uid
+                    && requestAlertAfter(bookingId).data.facilityId == request.resource.data.facilityId
+                    && requestAlertAfter(bookingId).data.date == request.resource.data.date
                     && availabilityAfter(bookingId).data.facilityId == request.resource.data.facilityId
                     && availabilityAfter(bookingId).data.date == request.resource.data.date
                     && availabilityAfter(bookingId).data.startTime == request.resource.data.startTime
@@ -156,13 +184,21 @@ service cloud.firestore {
     }
 
     match /idPhotos/{photoId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow read: if isSelf(resource.data.ownerId)
+        || isSuperAdmin()
+        || (isAdmin()
+            && resource.data.get('facilityIds', []).hasAny(
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('assignedFacilityIds', [])
+            ));
       allow create: if isSignedIn()
                     && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.facilityIds is list
                     && request.resource.data.size <= 700 * 1024
                     && request.resource.data.contentType.matches('image/(jpeg|png|webp)');
-      allow update: if false;
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow update: if (isSelf(resource.data.ownerId) || isSuperAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['facilityIds'])
+        && request.resource.data.get('facilityIds', []).hasAll(resource.data.get('facilityIds', []));
+      allow delete: if isSelf(resource.data.ownerId) || isSuperAdmin();
     }
 
     match /blockedSlots/{slotId} {
@@ -182,6 +218,39 @@ service cloud.firestore {
                     && request.resource.data.body is string
                     && request.resource.data.read == false
                     && exists(/databases/$(database)/documents/users/$(request.resource.data.uid));
+    }
+
+    match /bookingAudit/{auditId} {
+      allow read: if isFacilityAdmin(resource.data.facilityId);
+      allow create: if isFacilityAdmin(request.resource.data.facilityId)
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.bookingId is string
+        && request.resource.data.date is string
+        && request.resource.data.action is string
+        && request.resource.data.keys().hasOnly([
+          'bookingId', 'facilityId', 'date', 'startTime', 'endTime',
+          'studentName', 'action', 'actorUid', 'actorName',
+          'previousStatus', 'status', 'createdAt'
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /requestAlerts/{bookingId} {
+      allow read: if isFacilityAdmin(resource.data.facilityId);
+      allow create: if isSignedIn()
+        && existsAfter(/databases/$(database)/documents/bookings/$(bookingId))
+        && bookingAfter(bookingId).data.userId == request.auth.uid
+        && bookingAfter(bookingId).data.status == 'pending'
+        && request.resource.data.bookingId == bookingId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.facilityId == bookingAfter(bookingId).data.facilityId
+        && request.resource.data.date == bookingAfter(bookingId).data.date
+        && request.resource.data.read == false
+        && request.resource.data.keys().hasOnly(['bookingId', 'userId', 'facilityId', 'date', 'read', 'createdAt']);
+      allow update: if isFacilityAdmin(resource.data.facilityId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow delete: if false;
     }
   }
 }
