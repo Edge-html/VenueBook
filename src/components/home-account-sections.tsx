@@ -110,7 +110,7 @@ function StudentSections() {
 
   return (
     <div className="animate-fade-up mt-3 space-y-3">
-      {profile?.verificationRequired && !profile.emailOtpVerified && <Link href="/verify-email" className="banner banner-warning block font-medium">Verify your email with the six-digit code to start booking →</Link>}
+      {profile?.verificationRequired && !profile.emailOtpVerified && !user?.emailVerified && <Link href="/verify-email" className="banner banner-warning block font-medium">Verify your email from the link we sent to start booking →</Link>}
       <Link href="/reservations" className="card block p-4 hover:border-brand-300">
         <p className="eyebrow">My Booking</p>
         {nextBooking ? <><h2 className="mt-1 font-semibold text-ink-900">Scheduled Booking: {formatLongDate(nextBooking.date)}{nextBooking.date === todayKey() ? " · Today" : ""}</h2><p className="mt-1 text-sm text-ink-600">{facilities.find((facility) => facility.id === nextBooking.facilityId)?.name ?? FACILITY_BY_ID[nextBooking.facilityId]?.name} · {formatTimeRange(nextBooking.startTime, nextBooking.endTime)} · {nextBooking.status}</p><p className="mt-1 text-xs text-ink-500">{nextBooking.purpose} · {nextBooking.attendees} attendees</p></> : <p className="mt-1 text-sm text-ink-600">No upcoming booking. Open My Reservations to see your history.</p>}

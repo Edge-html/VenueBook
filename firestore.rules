@@ -52,8 +52,10 @@ service cloud.firestore {
       allow update: if isSuperAdmin()
                     || (isSelf(uid)
                         && request.resource.data.role == resource.data.role
-                        && request.resource.data.get('emailOtpVerified', false)
+                        && (request.resource.data.get('emailOtpVerified', false)
                             == resource.data.get('emailOtpVerified', false)
+                            || (request.resource.data.get('emailOtpVerified', false) == true
+                                && request.auth.token.email_verified == true))
                         && (!('verificationRequired' in resource.data)
                             || resource.data.verificationRequired != true
                             || request.resource.data.verificationRequired == true)
@@ -84,8 +86,7 @@ service cloud.firestore {
                     && request.resource.data.idPhotoUrl is string
                     && exists(/databases/$(database)/documents/idPhotos/$(request.resource.data.idPhotoUrl))
                     && get(/databases/$(database)/documents/idPhotos/$(request.resource.data.idPhotoUrl)).data.ownerId == request.auth.uid
-                    && (!('verificationRequired' in bookingProfile().data)
-                        || bookingProfile().data.verificationRequired != true
+                    && (request.auth.token.email_verified == true
                         || bookingProfile().data.emailOtpVerified == true)
                     && request.resource.data.status == 'pending'
                     && request.resource.data.startAt is timestamp

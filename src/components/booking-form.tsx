@@ -33,7 +33,7 @@ import { useFacilities } from "@/lib/use-facilities";
 const ICONS: Record<string, typeof Dumbbell> = { gymnasium: Dumbbell, avr: MonitorPlay };
 
 export function BookingForm() {
-  const { profile, initialising } = useAuth();
+  const { profile, user, initialising } = useAuth();
 
   // Wait for the auth state so the name field can start filled in. Spinning on
   // `profile` alone would hang forever if the profile read was refused.
@@ -53,8 +53,8 @@ export function BookingForm() {
     );
   }
 
-  if (profile.verificationRequired && !profile.emailOtpVerified) {
-    return <div className="card mx-auto max-w-lg p-6"><h1 className="page-title">Verify your email</h1><p className="page-lede mt-2">Enter the six-digit code sent to your email before requesting a venue.</p><Link href="/verify-email" className="btn btn-primary mt-4">Verify email</Link></div>;
+  if (profile.verificationRequired && !profile.emailOtpVerified && !user?.emailVerified) {
+    return <div className="card mx-auto max-w-lg p-6"><h1 className="page-title">Verify your email</h1><p className="page-lede mt-2">Open the verification link sent to your email before requesting a venue.</p><Link href="/verify-email" className="btn btn-primary mt-4">Continue to email verification</Link></div>;
   }
 
   return <BookingFields key={profile.uid} defaultFullName={profile.fullName} grade={profile.grade ?? ""} section={profile.section ?? ""} idPhotoUrl={profile.idPhotoUrl ?? null} />;

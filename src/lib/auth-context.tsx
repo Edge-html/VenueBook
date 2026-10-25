@@ -2,7 +2,9 @@
 
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   onAuthStateChanged,
+  reload,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as fbSignOut,
@@ -17,6 +19,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import {
@@ -50,6 +53,7 @@ interface AuthContextValue {
   initialising: boolean;
   isAdmin: boolean;
   signUp: (input: SignUpInput) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (identifier: string) => Promise<void>;
@@ -72,6 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (snap.exists()) {
         const data = snap.data() as Omit<UserProfile, "uid">;
+        if (nextUser.emailVerified && data.emailOtpVerified !== true) {
+          try {
+            await updateDoc(doc(db, "users", nextUser.uid), { emailOtpVerified: true });
+            data.emailOtpVerified = true;
+          } catch {
+            // Firestore rules must allow a verified Firebase email claim to
+            // promote this legacy profile flag. Booking rules also check the
+            // claim directly, so a missing profile write cannot bypass auth.
+          }
+        }
         setProfile({ uid: nextUser.uid, ...data });
         return;
       }
@@ -149,6 +163,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
+  const sendVerificationEmail = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Sign in to request an email verification link.");
+    await sendEmailVerification(currentUser, {
+      url: `${window.location.origin}/verify-email?verified=1`,
+      handleCodeInApp: false,
+    });
+  }, []);
+
   const signUp = useCallback(async ({ fullName, phone, email, password, grade, section, idPhoto }: SignUpInput) => {
     const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const phoneE164 = normalizePhone(phone);
@@ -174,6 +197,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: "student",
       } satisfies Omit<UserProfile, "createdAt">, { merge: true });
     }
+    await sendEmailVerification(credential.user, {
+      url: `${window.location.origin}/verify-email?verified=1`,
+      handleCodeInApp: false,
+    });
     await loadProfile(credential.user);
   }, [loadProfile]);
 
@@ -214,7 +241,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (auth.currentUser) await loadProfile(auth.currentUser);
+    if (auth.currentUser) {
+      await reload(auth.currentUser);
+      await auth.currentUser.getIdToken(true);
+      await loadProfile(auth.currentUser);
+    }
   }, [loadProfile]);
 
   const value = useMemo<AuthContextValue>(
@@ -224,12 +255,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       initialising,
       isAdmin: profile?.role === "admin",
       signUp,
+      sendVerificationEmail,
       signIn,
       signOut,
       resetPassword,
       refreshProfile,
     }),
-    [user, profile, initialising, signUp, signIn, signOut, resetPassword, refreshProfile],
+    [user, profile, initialising, signUp, sendVerificationEmail, signIn, signOut, resetPassword, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

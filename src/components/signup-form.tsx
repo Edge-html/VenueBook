@@ -92,7 +92,7 @@ function SignUpFields() {
   }
 
   if (initialising) return null;
-  if (user && !busy) return <AuthShell title="Account created" subtitle="Verify your email and complete any missing profile details before booking." footer={null}><FormError message={error} /><div className="mt-4 flex flex-wrap gap-2"><Link href="/verify-email" className="btn btn-primary">Enter verification code</Link><Link href="/profile" className="btn btn-outline">Complete profile</Link></div></AuthShell>;
+  if (user && !busy) return <AuthShell title="Account created" subtitle="Open the verification link sent to your email before booking." footer={null}><FormError message={error} /><div className="mt-4 flex flex-wrap gap-2"><Link href="/verify-email" className="btn btn-primary">Continue to email verification</Link><Link href="/profile" className="btn btn-outline">Complete profile</Link></div></AuthShell>;
 
   return (
     <AuthShell

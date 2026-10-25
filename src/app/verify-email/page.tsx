@@ -1,40 +1,98 @@
 "use client";
 
+import { applyActionCode } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { auth } from "@/lib/firebase";
 
 export default function VerifyEmailPage() {
-  const { user, profile, initialising, refreshProfile } = useAuth();
+  const { user, profile, initialising, refreshProfile, sendVerificationEmail } = useAuth();
   const router = useRouter();
-  const sentOnce = useRef(false);
-  const [code, setCode] = useState("");
+  const [actionCode] = useState(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("oobCode"),
+  );
+  const [returnedFromVerification] = useState(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("verified") === "1",
+  );
+  const processedCode = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function requestCode(action: "send" | "verify", value?: string) {
-    if (!user) return;
-    setBusy(true); setError(null);
+  const checkVerification = useCallback(async () => {
+    setBusy(true);
+    setError(null);
     try {
-      const token = await user.getIdToken();
-      const response = await fetch("/api/email-otp", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, code: value }) });
-      const result = await response.json() as { error?: string; verified?: boolean; sent?: boolean };
-      if (!response.ok) throw new Error(result.error ?? "Verification failed. Try again.");
-      if (action === "send") setSent(true);
-      if (result.verified) { await refreshProfile(); router.replace("/"); }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Verification failed."); }
-    finally { setBusy(false); }
-  }
+      await refreshProfile();
+      if (!auth.currentUser?.emailVerified) {
+        setError("Your email is not verified yet. Open the link from your inbox, then check again.");
+        return;
+      }
+      router.replace("/");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not check your email status. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }, [refreshProfile, router]);
 
   useEffect(() => {
-    if (!initialising && !user) { router.replace("/signin?next=/verify-email"); return; }
-    if (profile?.emailOtpVerified) { router.replace("/"); return; }
-    if (user && profile?.verificationRequired && !sentOnce.current) { sentOnce.current = true; void requestCode("send"); }
-    // The automatic send is intentionally once per page visit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profile, initialising, router]);
+    if (!initialising && !user) router.replace("/signin?next=/verify-email");
+  }, [initialising, user, router]);
+
+  useEffect(() => {
+    if (!user || !actionCode || processedCode.current === actionCode) return;
+    processedCode.current = actionCode;
+    setBusy(true);
+    setError(null);
+    void applyActionCode(auth, actionCode)
+      .then(checkVerification)
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "This verification link is invalid or has expired.");
+      })
+      .finally(() => setBusy(false));
+  }, [user, actionCode, checkVerification]);
+
+  useEffect(() => {
+    if (user && returnedFromVerification && !actionCode) {
+      void Promise.resolve().then(checkVerification);
+    }
+  }, [user, returnedFromVerification, actionCode, checkVerification]);
+
+  useEffect(() => {
+    if (user && profile?.emailOtpVerified) {
+      router.replace("/");
+    }
+  }, [user, profile?.emailOtpVerified, router]);
 
   if (initialising || !user) return null;
-  return <main className="mx-auto max-w-md px-4 py-12"><section className="card p-6"><h1 className="page-title">Verify your email</h1><p className="page-lede mt-2">Enter the six-digit code sent to {user.email}. It expires after 10 minutes.</p>{sent && <p role="status" className="banner banner-notice mt-4">Code sent. Check your inbox and spam folder.</p>}{error && <p role="alert" className="banner banner-error mt-4">{error}</p>}<form className="mt-5 space-y-4" onSubmit={(event) => { event.preventDefault(); void requestCode("verify", code); }}><label htmlFor="otp" className="field-label">Verification code</label><input id="otp" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className="field text-center text-xl tracking-[0.35em]" /><button type="submit" disabled={busy || code.length !== 6} className="btn btn-primary w-full">Verify account</button></form><button type="button" disabled={busy} onClick={() => void requestCode("send")} className="link mt-4 text-sm">Send a new code</button></section></main>;
+
+  return (
+    <main className="mx-auto max-w-md px-4 py-12">
+      <section className="card p-6">
+        <h1 className="page-title">Verify your email</h1>
+        <p className="page-lede mt-2">
+          We sent a verification link to <strong>{user.email}</strong>. Open it from your inbox to activate your account.
+        </p>
+        {sent && <p role="status" className="banner banner-notice mt-4">Verification link sent. Check your inbox and spam folder.</p>}
+        {error && <p role="alert" className="banner banner-error mt-4">{error}</p>}
+        <div className="mt-5 flex flex-col gap-3">
+          <button type="button" disabled={busy} onClick={() => void checkVerification()} className="btn btn-primary w-full">
+            {busy ? "Checking…" : "I verified my email"}
+          </button>
+          <button type="button" disabled={busy} onClick={() => {
+            setBusy(true);
+            setError(null);
+            void sendVerificationEmail()
+              .then(() => setSent(true))
+              .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not send the verification link."))
+              .finally(() => setBusy(false));
+          }} className="link text-sm">
+            Send a new verification link
+          </button>
+        </div>
+      </section>
+    </main>
+  );
 }
