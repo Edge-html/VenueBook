@@ -78,9 +78,6 @@ export default function VerifyEmailPage() {
         {sent && <p role="status" className="banner banner-notice mt-4">Verification link sent. Check your inbox and spam folder.</p>}
         {error && <p role="alert" className="banner banner-error mt-4">{error}</p>}
         <div className="mt-5 flex flex-col gap-3">
-          <button type="button" disabled={busy} onClick={() => void checkVerification()} className="btn btn-primary w-full">
-            {busy ? "Checking…" : "I verified my email"}
-          </button>
           <button type="button" disabled={busy} onClick={() => {
             setBusy(true);
             setError(null);
