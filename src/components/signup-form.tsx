@@ -67,8 +67,12 @@ function SignUpFields() {
     if (confirm !== password) next.confirm = "Passwords do not match.";
     if (!grade) next.grade = "Choose your grade.";
     if (!section.trim()) next.section = "Enter your section.";
-    if (!selectedPhoto) next.idPhoto = "Attach your school ID photo.";
-    else next.idPhoto = validateIdPhoto(selectedPhoto) ?? undefined;
+    if (!selectedPhoto) {
+      next.idPhoto = "Attach your school ID photo.";
+    } else {
+      const photoError = validateIdPhoto(selectedPhoto);
+      if (photoError) next.idPhoto = photoError;
+    }
 
     return next;
   }
