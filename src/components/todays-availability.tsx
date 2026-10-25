@@ -193,7 +193,7 @@ export function TodaysAvailability() {
           })
         )}
       </div>
-      <p className="mt-3 text-xs text-ink-500">Each chip labels the hour it starts. For example, 11 AM means 11 AM–12 PM; 12 PM means 12–1 PM.</p>
+      <p className="mt-3 text-xs text-ink-500">Each chip marks the hour ending at its label. For example, 12 PM means 11 AM–12 PM; 1 PM means 12–1 PM.</p>
     </section>
   );
 }

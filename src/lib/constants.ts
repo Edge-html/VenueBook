@@ -97,7 +97,9 @@ export const TIME_BLOCKS: TimeBlock[] = Array.from(
     const start = OPENING_HOUR + index;
     return {
       id: `${`${start}`.padStart(2, "0")}-${`${start + 1}`.padStart(2, "0")}`,
-      label: formatHour12(start),
+      // Label each one-hour block by its ending time. A 7 AM–12 PM booking
+      // therefore marks through the 12 PM block; 1 PM is the next interval.
+      label: formatHour12(start + 1),
       startMin: start * 60,
       endMin: (start + 1) * 60,
     };
