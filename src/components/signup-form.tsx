@@ -78,7 +78,17 @@ function SignUpFields() {
 
     const next = validate();
     setFieldErrors(next);
-    if (Object.keys(next).length > 0) return;
+    const firstInvalidField = Object.keys(next)[0] as keyof Errors | undefined;
+    if (firstInvalidField) {
+      setError("Please correct the highlighted fields before creating your account.");
+      const inputId = firstInvalidField === "idPhoto" ? "registrationId" : firstInvalidField;
+      requestAnimationFrame(() => {
+        const input = document.getElementById(inputId);
+        input?.scrollIntoView({ behavior: "smooth", block: "center" });
+        input?.focus();
+      });
+      return;
+    }
 
     setBusy(true);
     try {
@@ -147,7 +157,7 @@ function SignUpFields() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor="grade" className="field-label">Grade</label>
-            <select id="grade" value={grade} onChange={(event) => setGrade(event.target.value)} className="field" aria-invalid={Boolean(fieldErrors.grade)}>
+            <select id="grade" value={grade} onChange={(event) => { setGrade(event.target.value); setError(null); setFieldErrors((current) => ({ ...current, grade: undefined })); }} className="field" aria-invalid={Boolean(fieldErrors.grade)}>
               <option value="">Select grade</option>
               {GRADES.map((value) => <option key={value} value={value}>Grade {value}</option>)}
             </select>
@@ -157,7 +167,7 @@ function SignUpFields() {
         </div>
         <div>
           <label htmlFor="registrationId" className="field-label">School ID photo</label>
-          <input id="registrationId" type="file" accept="image/jpeg,image/png,image/webp" required className="field" onChange={(event) => setIdPhoto(event.target.files?.[0] ?? null)} aria-invalid={Boolean(fieldErrors.idPhoto)} />
+          <input id="registrationId" type="file" accept="image/jpeg,image/png,image/webp" required className="field" onChange={(event) => { setIdPhoto(event.target.files?.[0] ?? null); setError(null); setFieldErrors((current) => ({ ...current, idPhoto: undefined })); }} aria-invalid={Boolean(fieldErrors.idPhoto)} />
           <p className="mt-2 text-xs text-ink-500">Only the main administrator and admins for venues you request can view this image.</p>
           <FieldError message={fieldErrors.idPhoto} />
         </div>
