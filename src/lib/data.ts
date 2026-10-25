@@ -149,6 +149,13 @@ export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
   const preparedFile = await prepareIdPhoto(file);
 
   const bytes = new Uint8Array(await preparedFile.arrayBuffer());
+  // Firestore's web SDK rejects Uint8Array values. Store a base64 string while
+  // retaining the original byte count for the document size checks.
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  const encodedData = btoa(binary);
   const id = `${uid}_${Date.now()}`;
 
   await setDoc(doc(db, COLLECTIONS.idPhotos, id), {
@@ -156,7 +163,7 @@ export async function uploadIdPhoto(file: File, uid: string): Promise<string> {
     facilityIds: [],
     contentType: preparedFile.type,
     size: bytes.length,
-    data: bytes,
+    data: encodedData,
     uploadedAt: serverTimestamp(),
   });
 
@@ -171,10 +178,13 @@ export async function fetchIdPhoto(
 
   const { contentType, data } = snap.data() as {
     contentType: string;
-    data: Uint8Array;
+    data: string | number[];
   };
 
-  const blob = new Blob([data as BlobPart], { type: contentType || "image/jpeg" });
+  const imageBytes = typeof data === "string"
+    ? Uint8Array.from(atob(data), (character) => character.charCodeAt(0))
+    : new Uint8Array(data);
+  const blob = new Blob([imageBytes], { type: contentType || "image/jpeg" });
   const url = URL.createObjectURL(blob);
 
   return { url, revoke: () => URL.revokeObjectURL(url) };
