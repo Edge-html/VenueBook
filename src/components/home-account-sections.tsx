@@ -2,46 +2,49 @@
 
 import {
   ArrowRight,
-  Bell,
-  CalendarCheck,
-  CalendarSearch,
-  ClipboardList,
+  CalendarClock,
+  ClipboardCheck,
+  MapPin,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
 import { AdminConsole } from "@/components/admin-console";
 import { useAuth } from "@/lib/auth-context";
-import { bookingsQueryForUser, notificationsQueryForUser, parseBookingDoc } from "@/lib/data";
+import { bookingsQueryForUser, parseBookingDoc } from "@/lib/data";
 import { useLiveQuery } from "@/lib/use-live-query";
 import { formatLongDate, todayKey } from "@/lib/dates";
 import { formatTimeRange } from "@/lib/time";
 import { FACILITY_BY_ID } from "@/lib/constants";
 import { useFacilities } from "@/lib/use-facilities";
 
-const ACTIONS = [
+const BOOKING_STEPS = [
   {
     href: "/book",
-    icon: CalendarCheck,
-    title: "Book a Facility",
-    description: "Reserve the gym or AVR for your activities, events, and special moments.",
+    icon: MapPin,
+    number: "01",
+    title: "Choose a venue",
+    description: "Select the facility for your activity.",
   },
   {
     href: "/availability",
-    icon: CalendarSearch,
-    title: "Check Availability",
-    description: "See the live calendar. Green is free, red is taken, amber is awaiting approval.",
+    icon: CalendarClock,
+    number: "02",
+    title: "Pick a date and time",
+    description: "Choose an open weekday and schedule.",
+  },
+  {
+    href: "/book",
+    icon: Send,
+    number: "03",
+    title: "Send your request",
+    description: "Add your event details and submit.",
   },
   {
     href: "/reservations",
-    icon: ClipboardList,
-    title: "My Reservations",
-    description: "Follow every request you have sent, from pending to approved.",
-  },
-  {
-    href: "/notifications",
-    icon: Bell,
-    title: "Notifications",
-    description: "Get told the moment an admin approves or declines your booking.",
+    icon: ClipboardCheck,
+    number: "04",
+    title: "Track the decision",
+    description: "Follow approval in My Reservations.",
   },
 ];
 
@@ -50,8 +53,7 @@ const ACTIONS = [
  *
  * For an admin this *is* the home page — the console replaces the student
  * functions entirely, so opening Home drops you straight into approvals.
- * Students get their greeting, the four main functions, and upcoming
- * reservations. Visitors get nothing, so the landing page stays a plain
+ * Students get their scheduled booking and booking process. Visitors get nothing, so the landing page stays a plain
  * marketing page while signed out.
  */
 export function HomeAccountSections() {
@@ -74,8 +76,7 @@ function StudentSections() {
   const facilities = useFacilities();
   const { user, profile } = useAuth();
 
-  // Live: the pending/unread badges stay in step with the booking and
-  // notification screens without the student having to reload.
+  // Keep the next scheduled booking current without a page reload.
   const bookingsLive = useLiveQuery({
     cacheKey: `counts-bookings:${user?.uid ?? "none"}`,
     enabled: Boolean(user),
@@ -83,29 +84,6 @@ function StudentSections() {
     buildQueries: () => (user ? [bookingsQueryForUser(user.uid)] : []),
   });
 
-  const notificationsLive = useLiveQuery({
-    cacheKey: `counts-notifications:${user?.uid ?? "none"}`,
-    enabled: Boolean(user),
-    deps: [user?.uid],
-    buildQueries: () => (user ? [notificationsQueryForUser(user.uid)] : []),
-  });
-
-  const pending = useMemo(
-    () =>
-      (bookingsLive.docs ?? []).filter((doc) => doc.data().status === "pending").length,
-    [bookingsLive.docs],
-  );
-
-  const unread = useMemo(
-    () =>
-      (notificationsLive.docs ?? []).filter((doc) => !doc.data().read).length,
-    [notificationsLive.docs],
-  );
-
-  const badges: Record<string, number> = {
-    "/reservations": pending,
-    "/notifications": unread,
-  };
   const nextBooking = (bookingsLive.docs ?? []).map(parseBookingDoc).filter((booking) => booking.date >= todayKey() && (booking.status === "approved" || booking.status === "pending")).sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`))[0];
 
   return (
@@ -115,34 +93,25 @@ function StudentSections() {
         <p className="eyebrow">My Booking</p>
         {nextBooking ? <><p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">Scheduled booking</p><div className="mt-1 flex flex-wrap items-center gap-2.5"><h2 className="text-xl font-bold tracking-tight text-ink-950 sm:text-2xl">{formatLongDate(nextBooking.date)}</h2>{nextBooking.date === todayKey() && <span className="rounded-full bg-brand-700 px-3 py-1 text-sm font-bold text-white shadow-sm">Today</span>}</div><p className="mt-2 text-sm font-medium text-ink-700">{facilities.find((facility) => facility.id === nextBooking.facilityId)?.name ?? FACILITY_BY_ID[nextBooking.facilityId]?.name} · {formatTimeRange(nextBooking.startTime, nextBooking.endTime)} · {nextBooking.status}</p><p className="mt-1 text-xs text-ink-500">{nextBooking.purpose} · {nextBooking.attendees} attendees</p></> : <p className="mt-1 text-sm text-ink-600">No upcoming booking. Open My Reservations to see your history.</p>}
       </Link>
-      <section className="grid gap-3 sm:grid-cols-2">
-        {ACTIONS.map(({ href, icon: Icon, title, description }) => (
-          <Link
-            key={href}
-            href={href}
-            className="card group flex items-center gap-3 p-4 transition-colors hover:border-brand-300"
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-100">
-              <Icon className="h-5 w-5" />
-            </span>
-
-            <div className="min-w-0">
-              <h3 className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em] text-ink-900">
-                {title}
-                {badges[href] > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-700 px-1.5 text-[11px] font-semibold text-white">
-                    {badges[href]}
-                  </span>
-                )}
-              </h3>
-              <p className="mt-0.5 text-sm leading-relaxed text-ink-500">{description}</p>
-            </div>
-
-            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink-400 transition-colors group-hover:text-brand-700" />
-          </Link>
-        ))}
+      <section className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-50/60 p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="eyebrow text-brand-700">Student guide</p>
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink-950 sm:text-xl">How facility booking works</h2>
+          </div>
+          <Link href="/book" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:text-brand-900">Start a booking <ArrowRight className="h-4 w-4" /></Link>
+        </div>
+        <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {BOOKING_STEPS.map(({ href, icon: Icon, number, title, description }) => (
+            <li key={number}>
+              <Link href={href} className="group flex h-full items-start gap-3 rounded-lg border border-brand-100 bg-white/90 p-3 transition hover:border-brand-300 hover:shadow-sm">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-800"><Icon className="h-5 w-5" /></span>
+                <span className="min-w-0"><span className="block text-[11px] font-bold tracking-widest text-brand-700">STEP {number}</span><span className="mt-0.5 block text-sm font-semibold text-ink-900 group-hover:text-brand-800">{title}</span><span className="mt-1 block text-xs leading-relaxed text-ink-500">{description}</span></span>
+              </Link>
+            </li>
+          ))}
+        </ol>
       </section>
-      <p className="text-center text-xs text-ink-500">How it works: Choose a venue → Pick a weekday and exact time → Send request → Track approval in My Booking.</p>
     </div>
   );
 }
