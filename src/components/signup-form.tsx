@@ -55,7 +55,7 @@ function SignUpFields() {
     };
   }
 
-  function validate(): Errors {
+  function validate(selectedPhoto: File | null = idPhoto): Errors {
     const next: Errors = {};
 
     if (fullName.trim().length < 3) next.fullName = "Please enter your full name.";
@@ -67,8 +67,8 @@ function SignUpFields() {
     if (confirm !== password) next.confirm = "Passwords do not match.";
     if (!grade) next.grade = "Choose your grade.";
     if (!section.trim()) next.section = "Enter your section.";
-    if (!idPhoto) next.idPhoto = "Attach your school ID photo.";
-    else next.idPhoto = validateIdPhoto(idPhoto) ?? undefined;
+    if (!selectedPhoto) next.idPhoto = "Attach your school ID photo.";
+    else next.idPhoto = validateIdPhoto(selectedPhoto) ?? undefined;
 
     return next;
   }
@@ -76,7 +76,11 @@ function SignUpFields() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    const next = validate();
+    // Read the native file input as well as React state. This covers browsers
+    // where the file control has a selection before component state updates.
+    const nativePhoto = (document.getElementById("registrationId") as HTMLInputElement | null)?.files?.[0];
+    const selectedPhoto = nativePhoto ?? idPhoto;
+    const next = validate(selectedPhoto);
     setFieldErrors(next);
     const firstInvalidField = Object.keys(next)[0] as keyof Errors | undefined;
     if (firstInvalidField) {
@@ -92,8 +96,8 @@ function SignUpFields() {
 
     setBusy(true);
     try {
-      if (!idPhoto) return;
-      await signUp({ fullName, phone, email, password, grade, section, idPhoto });
+      if (!selectedPhoto) return;
+      await signUp({ fullName, phone, email, password, grade, section, idPhoto: selectedPhoto });
       router.replace("/verify-email");
     } catch (err) {
       setError(friendlyAuthError(err));

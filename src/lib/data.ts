@@ -98,7 +98,13 @@ export function blockedSlotId(facilityId: string, date: string, timeSlot: string
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function validateIdPhoto(file: File): string | null {
-  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+  // Some browsers report an empty MIME type for valid local files. Fall back
+  // to the filename extension in that case so a selected PNG/JPG is not
+  // rejected by the signup form before Firebase is called.
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  const supportedExtension = ["jpg", "jpeg", "png", "webp"].includes(extension ?? "");
+  const reportedType = file.type.toLowerCase();
+  if (!ACCEPTED_IMAGE_TYPES.includes(reportedType) && !(supportedExtension && (!reportedType || reportedType === "application/octet-stream"))) {
     return "Please upload a JPG, PNG, or WEBP image.";
   }
   return null;
