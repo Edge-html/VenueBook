@@ -176,7 +176,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const preparedIdPhoto = await prepareIdPhoto(idPhoto);
     const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const phoneE164 = normalizePhone(phone);
-    const idPhotoUrl = await uploadIdPhoto(preparedIdPhoto, credential.user.uid);
     await updateProfile(credential.user, { displayName: fullName.trim() });
 
     // Never overwrite an existing profile: this can run on a re-signup, and a
@@ -190,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: phoneE164,
         grade,
         section: section.trim(),
-        idPhotoUrl,
+        idPhotoUrl: null,
         verificationRequired: true,
         emailOtpVerified: false,
         // Always a student. Admins are promoted deliberately in the Firebase
@@ -198,6 +197,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: "student",
       } satisfies Omit<UserProfile, "createdAt">, { merge: true });
     }
+    // Save the registration details before uploading the image so a photo
+    // upload problem cannot leave a newly created account with a blank profile.
+    const idPhotoUrl = await uploadIdPhoto(preparedIdPhoto, credential.user.uid);
+    await updateDoc(profileRef, { idPhotoUrl });
     await sendEmailVerification(credential.user, {
       url: `${window.location.origin}/verify-email?verified=1`,
       handleCodeInApp: false,
